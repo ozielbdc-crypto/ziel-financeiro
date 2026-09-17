@@ -1,0 +1,2 @@
+Backup reference commit: 726da7759dac5842377763fe9ea0427508d71542
+Created before mobile card layout improvements on 2026-09-17.
