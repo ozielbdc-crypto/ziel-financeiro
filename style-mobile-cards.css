@@ -1,0 +1,21 @@
+/* Mobile card presentation for wide financial tables */
+.mobile-cards{display:none}
+@media(max-width:700px){
+  .desktop-table{display:none!important}
+  .mobile-cards{display:grid;gap:10px}
+  .mobile-record{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px;box-shadow:0 4px 14px rgba(16,43,71,.05)}
+  .mobile-record-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}
+  .mobile-record-title{font-weight:800;font-size:15px;line-height:1.25;word-break:break-word}
+  .mobile-record-value{font-weight:800;font-size:16px;white-space:nowrap}
+  .mobile-record-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
+  .mobile-field{min-width:0}
+  .mobile-field span{display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);margin-bottom:2px}
+  .mobile-field b,.mobile-field div{font-size:13px;font-weight:600;word-break:break-word}
+  .mobile-record-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid #edf1f5}
+  .mobile-record-actions:has(.btn:only-child){grid-template-columns:1fr}
+  .mobile-record-actions .btn{width:100%;min-width:0;min-height:40px}
+  #txTable>.table-wrap,#payTable>.table-wrap,#recTable>.table-wrap{border:0;overflow:visible}
+}
+@media(max-width:420px){
+  .mobile-record-grid{grid-template-columns:1fr}
+}
