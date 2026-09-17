@@ -1,7 +1,7 @@
 // Extensão: desfazer/excluir conciliação sem apagar extrato ou lançamento
 bankTable = function(arr){
   if(!arr.length) return '<div class="empty">Nenhum item de extrato.</div>';
-  return `<div class="table-wrap"><table class="table"><thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>${arr.map(b=>`<tr><td>${br(b.bank_date)}</td><td>${esc(b.description)}<div class="mini">${esc(walletName(b.wallet_id))}</div></td><td class="${Number(b.amount)>=0?'g':'r'}">${fmt(b.amount)}</td><td>${badge(b.status||'Não conciliado')}</td><td><div class="actions">${b.transaction_id?`<button class="btn btn-soft" data-unrecon="${b.id}">Excluir conciliação</button>`:`<button class="btn btn-soft" data-recon="${b.id}">Conciliar</button>`}</div></td></tr>`).join('')}</tbody></table></div>`;
+  return `<div class="table-wrap"><table class="table"><thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>${arr.map(b=>{const reconciled=!!b.transaction_id||b.status==='Conciliado'||b.status==='Divergente';return `<tr><td>${br(b.bank_date)}</td><td>${esc(b.description)}<div class="mini">${esc(walletName(b.wallet_id))}</div></td><td class="${Number(b.amount)>=0?'g':'r'}">${fmt(b.amount)}</td><td>${badge(b.status||'Não conciliado')}</td><td><div class="actions">${reconciled?`<button class="btn btn-soft" data-unrecon="${b.id}">Excluir conciliação</button>`:`<button class="btn btn-soft" data-recon="${b.id}">Conciliar</button>`}</div></td></tr>`}).join('')}</tbody></table></div>`;
 };
 
 async function undoReconciliation(bankId){
