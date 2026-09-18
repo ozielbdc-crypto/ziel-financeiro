@@ -12,7 +12,7 @@ renderPayables = function(){
   const in30=new Date(y,m,now.getDate()+30);
   const in30Iso=zielIsoDate(in30);
 
-  const payees=[...new Set(allPay.map(p=>String(p.supplier||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const suppliers=[...new Set(allPay.map(p=>String(p.supplier||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
 
   $('content').innerHTML=setTitle('Contas a Pagar','Controle de vencimentos, pagamentos e recorrências',`<div class="actions"><button class="btn btn-soft" id="newFixed">+ Conta fixa</button><button class="btn btn-soft" id="newInstallmentPay">+ Contas a pagar parcelado</button><button class="btn btn-primary" id="newPay">+ Nova conta</button></div>`)+
   `<div class="card" style="margin-bottom:14px"><div class="section-head"><h3>Contas fixas recorrentes</h3><span class="mini">Geração mensal automática</span></div><div id="fixedList"></div></div>
@@ -26,7 +26,7 @@ renderPayables = function(){
         <option value="all">Todas</option>
       </select>
       <select id="payStatus"><option value="">Todas as situações</option><option>Pendente</option><option>Pago</option><option>Cancelado</option></select>
-      <select id="payFavorecido"><option value="">Todos os favorecidos</option>${payees.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}</select>
+      <select id="payFornecedor"><option value="">Todos os fornecedores</option>${suppliers.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}</select>
     </div>
     <div class="grid kpis dashboard-kpis" style="margin-top:12px" id="paySummary"></div>
    </div>
@@ -37,7 +37,7 @@ renderPayables = function(){
   $('newInstallmentPay').onclick=openInstallmentPayables;
   $('payPeriod').onchange=paint;
   $('payStatus').onchange=paint;
-  $('payFavorecido').onchange=paint;
+  $('payFornecedor').onchange=paint;
 
   function periodFilter(p){
     const due=p.due_date||'';
@@ -67,9 +67,9 @@ renderPayables = function(){
       ${kpiDetail('Pendente',fmt(pending),'Ainda em aberto','a')}
       ${kpiDetail('Vencido',fmt(overdue),'Pendentes com vencimento passado',overdue>0?'r':'g')}`;
 
-    const st=$('payStatus').value, fav=$('payFavorecido').value;
-    const visible=base.filter(p=>(!st||p.status===st)&&(!fav||String(p.supplier||'')===fav));
-    $('payTable').innerHTML=payableTable(visible,true);
+    const st=$('payStatus').value, supplier=$('payFornecedor').value;
+    const visible=base.filter(p=>(!st||p.status===st)&&(!supplier||String(p.supplier||'')===supplier));
+    $('payTable').innerHTML=payableTable(visible,true).replace(/Favorecido/g,'Fornecedor');
 
     $('fixedList').innerHTML=fixed.length?fixed.map(r=>`<div class="wallet-line"><span><b>${esc(r.description)}</b><small>${esc(businessName(r.business_id))} · ${esc(r.supplier)} · vence dia ${r.due_day}</small></span><span><b>${fmt(r.amount)}</b><div class="actions"><button class="btn btn-soft" data-edit-fixed="${r.id}">Editar</button><button class="btn btn-soft" data-toggle-fixed="${r.id}" data-active="${r.active}">${r.active?'Pausar':'Reativar'}</button></div></span></div>`).join(''):'<div class="empty">Nenhuma conta fixa cadastrada.</div>';
   }
