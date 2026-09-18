@@ -97,7 +97,13 @@ renderDashboard = function(){
  const byBusiness=biz.map(b=>{const arr=txAll.filter(t=>t.business_id===b.id);const revenue=arr.filter(t=>t.type==='Entrada').reduce((a,t)=>a+Number(t.amount),0);const expense=arr.filter(t=>t.type==='Saída').reduce((a,t)=>a+Number(t.amount),0);return {name:b.name,revenue,expense,profit:revenue-expense,margin:revenue>0?((revenue-expense)/revenue*100):0}});
 
  // Ponto de equilíbrio gerencial estimado.
- const fixedRecurring=filtered(state.recurring_payables).filter(r=>r.active!==false).reduce((a,r)=>a+Number(r.amount||0),0);
+ const recurringScope=(state.recurring_payables||[]).filter(r=>
+   r.active===true &&
+   (!state.businessFilter || r.business_id===state.businessFilter) &&
+   (!r.start_date || r.start_date<=zielIsoDate(monthEnd)) &&
+   (!r.end_date || r.end_date>=zielIsoDate(monthStart))
+ );
+ const fixedRecurring=recurringScope.reduce((a,r)=>a+Number(r.amount||0),0);
  const monthTx=txAll.filter(t=>t.transaction_date>=zielIsoDate(monthStart)&&t.transaction_date<=today);
  const monthRevenue=monthTx.filter(t=>t.type==='Entrada').reduce((a,t)=>a+Number(t.amount||0),0);
  const recurringPayableIds=new Set(pay.filter(p=>p.recurring_payable_id).map(p=>p.id));
@@ -106,6 +112,9 @@ renderDashboard = function(){
  const variableExpense=Math.max(0,monthExpense-fixedPaid);
  const contributionMargin=monthRevenue>0?(monthRevenue-variableExpense)/monthRevenue:0;
  const breakEven=contributionMargin>0?fixedRecurring/contributionMargin:null;
+ const fixedBreakdown=recurringScope.length
+   ? recurringScope.map(r=>`<div class="wallet-line"><span><small>${esc(businessName(r.business_id))}</small><b>${esc(r.description||'Conta fixa')}</b><small>${esc(r.supplier||'')}</small></span><strong>${fmt(r.amount)}</strong></div>`).join('')
+   : '<div class="empty">Nenhuma conta fixa ativa considerada neste filtro.</div>';
 
  const todayStats=zielRangeStats(txAll,today,today);
  const yestIso=zielIsoDate(yesterday),yesterdayStats=zielRangeStats(txAll,yestIso,yestIso);
@@ -143,7 +152,8 @@ renderDashboard = function(){
      ${indicator('Ponto de equilíbrio',breakEven===null?'Indisponível':fmt(breakEven),breakEven===null?'r':'b')}
      ${indicator('Receita mês atual',fmt(monthRevenue),monthRevenue>=Number(breakEven||0)?'g':'b')}
    </div>
-   <div class="mini" style="margin-top:10px">Estimativa gerencial: considera como custos fixos as contas fixas recorrentes ativas e, no mês atual, trata as demais saídas como variáveis. Quanto melhor a classificação das contas, mais útil será o indicador.</div>
+   <div style="margin-top:12px"><div class="section-head"><b>Composição dos custos fixos</b><span class="mini">${recurringScope.length} conta(s)</span></div><div class="wallet-list">${fixedBreakdown}</div></div>
+   <div class="mini" style="margin-top:10px">Estimativa gerencial: considera como custos fixos as contas fixas recorrentes ativas vigentes no mês e, no mês atual, trata as demais saídas como variáveis.</div>
  </div>
  <div class="grid two dashboard-charts" style="margin-top:14px">
    <div class="card"><div class="section-head"><h3>Entradas x Saídas por mês</h3><span class="mini">12 meses</span></div><div class="chart-box"><canvas id="chartFluxo"></canvas></div></div>
