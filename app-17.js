@@ -107,110 +107,150 @@ async function zielLoadHtml5Qrcode(){
   return window;
 }
 
+async function zielLoadQuagga(){
+  if(window.Quagga?.init) return window.Quagga;
+  await new Promise((resolve,reject)=>{
+    const existing=document.querySelector('script[data-ziel-quagga]');
+    if(existing){
+      if(window.Quagga?.init) return resolve();
+      existing.addEventListener('load',resolve,{once:true});
+      existing.addEventListener('error',reject,{once:true});
+      return;
+    }
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js';
+    s.async=true;
+    s.dataset.zielQuagga='1';
+    s.onload=resolve;
+    s.onerror=()=>reject(new Error('Falha ao carregar o leitor de boleto.'));
+    document.head.appendChild(s);
+  });
+  if(!window.Quagga?.init) throw new Error('Leitor de boleto indisponível.');
+  return window.Quagga;
+}
+
+function zielOnlyDigits(value){
+  return String(value||'').replace(/\D/g,'');
+}
+
+function zielLooksLikeBoletoBarcode(value){
+  const digits=zielOnlyDigits(value);
+  return digits.length===44;
+}
+
 async function zielScanBarcodeToInput(inputId){
   if(!navigator.mediaDevices?.getUserMedia) return toast('A câmera não está disponível neste navegador.','error');
 
-  let scanner=null, stopped=false;
+  let stopped=false;
   const overlay=document.createElement('div');
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:99999;display:flex;align-items:center;justify-content:center;padding:14px';
-  overlay.innerHTML=`<div style="width:min(680px,100%);background:#fff;border-radius:14px;padding:14px">
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:99999;display:flex;align-items:center;justify-content:center;padding:12px';
+  overlay.innerHTML=`<div style="width:min(720px,100%);background:#fff;border-radius:14px;padding:14px">
     <div class="section-head">
-      <div><b>Ler código</b><div class="mini">Boleto ITF/I25 e QR Code Pix</div></div>
+      <div><b>Ler boleto</b><div class="mini">Leitor dedicado I25 / ITF</div></div>
       <button type="button" class="btn btn-soft" id="zielStopScan">Fechar</button>
     </div>
-    <div id="zielHtml5Reader" style="width:100%;overflow:hidden;border-radius:10px;background:#000"></div>
-    <div class="mini" id="zielScanStatus" style="margin-top:8px">Carregando leitor...</div>
+    <div id="zielQuaggaReader" style="position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:10px;background:#000">
+      <div style="position:absolute;left:4%;right:4%;top:38%;height:24%;border:2px solid rgba(255,255,255,.95);border-radius:8px;z-index:3;pointer-events:none"></div>
+    </div>
+    <div class="mini" id="zielScanStatus" style="margin-top:8px">Carregando leitor I25...</div>
   </div>`;
   document.body.appendChild(overlay);
 
   const status=overlay.querySelector('#zielScanStatus');
+  const target=overlay.querySelector('#zielQuaggaReader');
 
   const stop=async()=>{
     if(stopped) return;
     stopped=true;
-    try{
-      if(scanner?.isScanning) await scanner.stop();
-    }catch(_){}
-    try{await scanner?.clear?.();}catch(_){}
+    try{window.Quagga?.offDetected?.();}catch(_){}
+    try{window.Quagga?.offProcessed?.();}catch(_){}
+    try{window.Quagga?.stop?.();}catch(_){}
     overlay.remove();
   };
 
   const accept=async value=>{
-    value=String(value||'').trim();
-    if(!value) return;
+    const digits=zielOnlyDigits(value);
+    if(!zielLooksLikeBoletoBarcode(digits)) return false;
     const input=document.getElementById(inputId);
-    if(input) input.value=value;
+    if(input) input.value=digits;
     await stop();
-    toast('Código lido com sucesso.');
+    toast('Código do boleto lido com sucesso.');
+    return true;
   };
 
   overlay.querySelector('#zielStopScan').onclick=()=>stop();
 
   try{
-    status.textContent='Carregando mecanismo de leitura...';
-    const H=await zielLoadHtml5Qrcode();
+    status.textContent='Carregando mecanismo I25 / ITF...';
+    const Quagga=await zielLoadQuagga();
     if(stopped) return;
 
-    const F=H.Html5QrcodeSupportedFormats;
-    const formats=[
-      F.QR_CODE,
-      F.ITF,
-      F.CODE_128,
-      F.CODE_39,
-      F.CODABAR,
-      F.EAN_13,
-      F.EAN_8
-    ].filter(v=>v!==undefined&&v!==null);
-
-    scanner=new H.Html5Qrcode('zielHtml5Reader',{
-      formatsToSupport:formats,
-      verbose:false,
-      useBarCodeDetectorIfSupported:true
+    await new Promise((resolve,reject)=>{
+      Quagga.init({
+        inputStream:{
+          type:'LiveStream',
+          target,
+          constraints:{
+            facingMode:'environment',
+            width:{ideal:3840,min:1280},
+            height:{ideal:2160,min:720},
+            aspectRatio:{ideal:16/9}
+          },
+          area:{top:'20%',right:'3%',left:'3%',bottom:'20%'}
+        },
+        locator:{
+          patchSize:'medium',
+          halfSample:false
+        },
+        numOfWorkers:Math.max(2,Math.min(4,navigator.hardwareConcurrency||2)),
+        frequency:12,
+        decoder:{
+          readers:[
+            'i2of5_reader',
+            '2of5_reader',
+            'code_128_reader',
+            'code_39_reader'
+          ],
+          multiple:false
+        },
+        locate:true
+      },err=>err?reject(err):resolve());
     });
 
-    const cameraConfig={
-      facingMode:'environment',
-      width:{ideal:3840,min:1280},
-      height:{ideal:2160,min:720}
-    };
+    if(stopped) return;
 
-    const scanConfig={
-      fps:15,
-      aspectRatio:1.7777778,
-      disableFlip:false,
-      qrbox:(viewfinderWidth,viewfinderHeight)=>{
-        const w=Math.floor(viewfinderWidth*0.92);
-        const h=Math.floor(Math.min(viewfinderHeight*0.72,Math.max(180,viewfinderHeight*0.45)));
-        return {width:w,height:h};
-      },
-      videoConstraints:{
-        facingMode:{ideal:'environment'},
-        width:{ideal:3840,min:1280},
-        height:{ideal:2160,min:720},
-        focusMode:'continuous'
-      }
-    };
+    Quagga.onDetected(result=>{
+      const code=result?.codeResult?.code||'';
+      accept(code);
+    });
 
-    status.textContent='Abrindo câmera traseira...';
+    Quagga.start();
 
-    await scanner.start(
-      cameraConfig,
-      scanConfig,
-      decodedText=>accept(decodedText),
-      ()=>{}
-    );
-
-    setTimeout(()=>{
+    setTimeout(async()=>{
       if(stopped) return;
-      const video=overlay.querySelector('video');
+      const video=target.querySelector('video');
+      if(video){
+        video.setAttribute('playsinline','');
+        video.style.cssText='width:100%;height:100%;object-fit:cover';
+      }
       const track=video?.srcObject?.getVideoTracks?.()[0];
+      try{
+        const caps=track?.getCapabilities?.()||{};
+        const advanced={};
+        if(caps.focusMode?.includes('continuous')) advanced.focusMode='continuous';
+        if(caps.zoom){
+          const min=Number(caps.zoom.min||1),max=Number(caps.zoom.max||1);
+          if(max>min) advanced.zoom=Math.min(max,Math.max(min,1.3));
+        }
+        if(Object.keys(advanced).length) await track.applyConstraints({advanced:[advanced]});
+      }catch(_){}
       const settings=track?.getSettings?.()||{};
-      status.textContent=`Leitor ativo · ${settings.width||video?.videoWidth||'?'}×${settings.height||video?.videoHeight||'?'} · ITF/I25 + QR`;
-    },800);
+      status.textContent=`I25 ativo · ${settings.width||video?.videoWidth||'?'}×${settings.height||video?.videoHeight||'?'} · mantenha as 44 barras dentro da moldura`;
+    },700);
 
   }catch(e){
     await stop();
-    toast('Não foi possível iniciar o leitor: '+(e.message||'erro desconhecido'),'error');
+    toast('Não foi possível iniciar o leitor de boleto: '+(e.message||'erro desconhecido'),'error');
   }
 }
 
