@@ -149,8 +149,9 @@ async function zielScanBarcodeToInput(inputId){
       <div><b>Ler boleto</b><div class="mini">Leitor dedicado I25 / ITF</div></div>
       <button type="button" class="btn btn-soft" id="zielStopScan">Fechar</button>
     </div>
-    <div id="zielQuaggaReader" style="position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:10px;background:#000">
-      <div style="position:absolute;top:4%;bottom:4%;left:34%;width:32%;border:2px solid rgba(255,255,255,.95);border-radius:8px;z-index:3;pointer-events:none"></div>
+    <div id="zielCameraStage" style="position:relative;width:100%;height:min(72vh,720px);overflow:hidden;border-radius:10px;background:#000">
+      <div id="zielQuaggaReader" style="position:absolute;left:50%;top:50%;width:min(680px,calc(100vh - 140px));aspect-ratio:16/9;transform:translate(-50%,-50%) rotate(90deg);transform-origin:center;overflow:hidden;background:#000"></div>
+      <div style="position:absolute;top:3%;bottom:3%;left:32%;width:36%;border:2px solid rgba(255,255,255,.98);border-radius:8px;z-index:5;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.18)"></div>
     </div>
     <div class="mini" id="zielScanStatus" style="margin-top:8px">Carregando leitor I25...</div>
   </div>`;
@@ -160,7 +161,6 @@ async function zielScanBarcodeToInput(inputId){
   const target=overlay.querySelector('#zielQuaggaReader');
   const panel=overlay.querySelector('#zielScanPanel');
   panel.style.width='min(720px,calc(100vw - 24px))';
-  target.style.aspectRatio='16 / 9';
 
   const stop=async()=>{
     if(stopped) return;
@@ -248,7 +248,7 @@ async function zielScanBarcodeToInput(inputId){
         if(Object.keys(advanced).length) await track.applyConstraints({advanced:[advanced]});
       }catch(_){}
       const settings=track?.getSettings?.()||{};
-      status.textContent=`I25 ativo · ${settings.width||video?.videoWidth||'?'}×${settings.height||video?.videoHeight||'?'} · faixa vertical ativa`;
+      status.textContent=`I25 ativo · ${settings.width||video?.videoWidth||'?'}×${settings.height||video?.videoHeight||'?'} · quadro vertical ampliado`;
     },700);
 
   }catch(e){
