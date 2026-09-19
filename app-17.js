@@ -85,140 +85,131 @@ async function zielCopyInput(id){
   }
 }
 
-async function zielLoadZXing(){
-  if(window.ZXing?.BrowserMultiFormatReader) return window.ZXing;
+async function zielLoadHtml5Qrcode(){
+  if(window.Html5Qrcode && window.Html5QrcodeSupportedFormats) return window;
   await new Promise((resolve,reject)=>{
-    const existing=document.querySelector('script[data-ziel-zxing]');
+    const existing=document.querySelector('script[data-ziel-html5qrcode]');
     if(existing){
-      if(window.ZXing?.BrowserMultiFormatReader) return resolve();
+      if(window.Html5Qrcode) return resolve();
       existing.addEventListener('load',resolve,{once:true});
       existing.addEventListener('error',reject,{once:true});
       return;
     }
     const s=document.createElement('script');
-    s.src='https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
+    s.src='https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js';
     s.async=true;
-    s.dataset.zielZxing='1';
+    s.dataset.zielHtml5qrcode='1';
     s.onload=resolve;
-    s.onerror=()=>reject(new Error('Falha ao carregar leitor de código.'));
+    s.onerror=()=>reject(new Error('Falha ao carregar o leitor de códigos.'));
     document.head.appendChild(s);
   });
-  if(!window.ZXing?.BrowserMultiFormatReader) throw new Error('Leitor alternativo indisponível.');
-  return window.ZXing;
+  if(!window.Html5Qrcode) throw new Error('Leitor de códigos indisponível.');
+  return window;
 }
 
 async function zielScanBarcodeToInput(inputId){
   if(!navigator.mediaDevices?.getUserMedia) return toast('A câmera não está disponível neste navegador.','error');
 
-  let stopped=false, zxingReader=null, controls=null;
+  let scanner=null, stopped=false;
   const overlay=document.createElement('div');
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px';
-  overlay.innerHTML=`<div style="width:min(620px,100%);background:#fff;border-radius:14px;padding:14px">
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:99999;display:flex;align-items:center;justify-content:center;padding:14px';
+  overlay.innerHTML=`<div style="width:min(680px,100%);background:#fff;border-radius:14px;padding:14px">
     <div class="section-head">
-      <div><b>Ler código</b><div class="mini">Compatível com boleto e QR Code</div></div>
+      <div><b>Ler código</b><div class="mini">Boleto ITF/I25 e QR Code Pix</div></div>
       <button type="button" class="btn btn-soft" id="zielStopScan">Fechar</button>
     </div>
-    <div style="position:relative">
-      <video id="zielScanVideo" autoplay playsinline muted style="width:100%;border-radius:10px;background:#000;max-height:68vh;object-fit:contain"></video>
-      <div style="position:absolute;left:6%;right:6%;top:38%;height:24%;border:2px solid rgba(255,255,255,.9);border-radius:8px;pointer-events:none"></div>
-    </div>
+    <div id="zielHtml5Reader" style="width:100%;overflow:hidden;border-radius:10px;background:#000"></div>
     <div class="mini" id="zielScanStatus" style="margin-top:8px">Carregando leitor...</div>
   </div>`;
   document.body.appendChild(overlay);
 
-  const video=overlay.querySelector('#zielScanVideo');
   const status=overlay.querySelector('#zielScanStatus');
 
-  const stop=()=>{
+  const stop=async()=>{
     if(stopped) return;
     stopped=true;
-    try{controls?.stop?.();}catch(_){}
-    try{zxingReader?.reset?.();}catch(_){}
-    const s=video.srcObject;
-    if(s?.getTracks) s.getTracks().forEach(t=>t.stop());
+    try{
+      if(scanner?.isScanning) await scanner.stop();
+    }catch(_){}
+    try{await scanner?.clear?.();}catch(_){}
     overlay.remove();
   };
 
-  const accept=value=>{
+  const accept=async value=>{
     value=String(value||'').trim();
-    if(!value) return false;
+    if(!value) return;
     const input=document.getElementById(inputId);
     if(input) input.value=value;
-    stop();
+    await stop();
     toast('Código lido com sucesso.');
-    return true;
   };
 
-  overlay.querySelector('#zielStopScan').onclick=stop;
+  overlay.querySelector('#zielStopScan').onclick=()=>stop();
 
   try{
     status.textContent='Carregando mecanismo de leitura...';
-    const ZXing=await zielLoadZXing();
+    const H=await zielLoadHtml5Qrcode();
     if(stopped) return;
 
+    const F=H.Html5QrcodeSupportedFormats;
     const formats=[
-      ZXing.BarcodeFormat.ITF,
-      ZXing.BarcodeFormat.CODE_128,
-      ZXing.BarcodeFormat.CODE_39,
-      ZXing.BarcodeFormat.CODABAR,
-      ZXing.BarcodeFormat.EAN_13,
-      ZXing.BarcodeFormat.EAN_8,
-      ZXing.BarcodeFormat.QR_CODE
-    ].filter(Boolean);
+      F.QR_CODE,
+      F.ITF,
+      F.CODE_128,
+      F.CODE_39,
+      F.CODABAR,
+      F.EAN_13,
+      F.EAN_8
+    ].filter(v=>v!==undefined&&v!==null);
 
-    const hints=new Map();
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,formats);
-    hints.set(ZXing.DecodeHintType.TRY_HARDER,true);
-    try{hints.set(ZXing.DecodeHintType.ALSO_INVERTED,true);}catch(_){}
+    scanner=new H.Html5Qrcode('zielHtml5Reader',{
+      formatsToSupport:formats,
+      verbose:false,
+      useBarCodeDetectorIfSupported:true
+    });
 
-    zxingReader=new ZXing.BrowserMultiFormatReader(hints,200);
+    const cameraConfig={
+      facingMode:'environment',
+      width:{ideal:3840,min:1280},
+      height:{ideal:2160,min:720}
+    };
 
-    const constraints={
-      video:{
+    const scanConfig={
+      fps:15,
+      aspectRatio:1.7777778,
+      disableFlip:false,
+      qrbox:(viewfinderWidth,viewfinderHeight)=>{
+        const w=Math.floor(viewfinderWidth*0.92);
+        const h=Math.floor(Math.min(viewfinderHeight*0.72,Math.max(180,viewfinderHeight*0.45)));
+        return {width:w,height:h};
+      },
+      videoConstraints:{
         facingMode:{ideal:'environment'},
         width:{ideal:3840,min:1280},
         height:{ideal:2160,min:720},
-        aspectRatio:{ideal:16/9}
-      },
-      audio:false
-    };
-
-    status.textContent='Abrindo câmera traseira em alta resolução...';
-
-    const onResult=(result,err)=>{
-      if(stopped) return;
-      if(result){
-        const value=result.getText?result.getText():result.text;
-        if(accept(value)) return;
+        focusMode:'continuous'
       }
     };
 
-    if(typeof zxingReader.decodeFromConstraints==='function'){
-      controls=await zxingReader.decodeFromConstraints(constraints,video,onResult);
-    }else{
-      controls=await zxingReader.decodeFromVideoDevice(undefined,video,onResult);
-    }
+    status.textContent='Abrindo câmera traseira...';
 
-    video.addEventListener('loadedmetadata',async()=>{
+    await scanner.start(
+      cameraConfig,
+      scanConfig,
+      decodedText=>accept(decodedText),
+      ()=>{}
+    );
+
+    setTimeout(()=>{
       if(stopped) return;
-      const stream=video.srcObject;
-      const track=stream?.getVideoTracks?.()[0];
-      try{
-        const caps=track?.getCapabilities?.()||{};
-        const advanced={};
-        if(caps.focusMode?.includes('continuous')) advanced.focusMode='continuous';
-        if(caps.zoom){
-          const min=Number(caps.zoom.min||1), max=Number(caps.zoom.max||1);
-          if(max>min) advanced.zoom=Math.min(max,Math.max(min,1.5));
-        }
-        if(Object.keys(advanced).length) await track.applyConstraints({advanced:[advanced]});
-      }catch(_){}
+      const video=overlay.querySelector('video');
+      const track=video?.srcObject?.getVideoTracks?.()[0];
       const settings=track?.getSettings?.()||{};
-      status.textContent=`Leitor ativo · ${settings.width||video.videoWidth||'?'}×${settings.height||video.videoHeight||'?'} · boleto/QR habilitados`;
-    },{once:true});
+      status.textContent=`Leitor ativo · ${settings.width||video?.videoWidth||'?'}×${settings.height||video?.videoHeight||'?'} · ITF/I25 + QR`;
+    },800);
 
   }catch(e){
-    stop();
+    await stop();
     toast('Não foi possível iniciar o leitor: '+(e.message||'erro desconhecido'),'error');
   }
 }
