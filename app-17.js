@@ -110,24 +110,35 @@ async function zielLoadZXing(){
 async function zielScanBarcodeToInput(inputId){
   if(!navigator.mediaDevices?.getUserMedia) return toast('A câmera não está disponível neste navegador.','error');
 
-  let stream=null, stopped=false, zxingReader=null;
+  let stopped=false, zxingReader=null, controls=null;
   const overlay=document.createElement('div');
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px';
-  overlay.innerHTML=`<div style="width:min(560px,100%);background:#fff;border-radius:14px;padding:14px">
-    <div class="section-head"><div><b>Ler código de barras</b><div class="mini">Aponte a câmera para o código do boleto</div></div><button type="button" class="btn btn-soft" id="zielStopScan">Fechar</button></div>
-    <video id="zielScanVideo" autoplay playsinline muted style="width:100%;border-radius:10px;background:#000;max-height:65vh"></video>
-    <div class="mini" id="zielScanStatus" style="margin-top:8px">Mantenha o código inteiro visível e com boa iluminação.</div>
+  overlay.innerHTML=`<div style="width:min(620px,100%);background:#fff;border-radius:14px;padding:14px">
+    <div class="section-head">
+      <div><b>Ler código</b><div class="mini">Compatível com boleto e QR Code</div></div>
+      <button type="button" class="btn btn-soft" id="zielStopScan">Fechar</button>
+    </div>
+    <div style="position:relative">
+      <video id="zielScanVideo" autoplay playsinline muted style="width:100%;border-radius:10px;background:#000;max-height:68vh;object-fit:contain"></video>
+      <div style="position:absolute;left:6%;right:6%;top:38%;height:24%;border:2px solid rgba(255,255,255,.9);border-radius:8px;pointer-events:none"></div>
+    </div>
+    <div class="mini" id="zielScanStatus" style="margin-top:8px">Carregando leitor...</div>
   </div>`;
   document.body.appendChild(overlay);
 
   const video=overlay.querySelector('#zielScanVideo');
   const status=overlay.querySelector('#zielScanStatus');
+
   const stop=()=>{
+    if(stopped) return;
     stopped=true;
-    if(stream) stream.getTracks().forEach(t=>t.stop());
+    try{controls?.stop?.();}catch(_){}
     try{zxingReader?.reset?.();}catch(_){}
+    const s=video.srcObject;
+    if(s?.getTracks) s.getTracks().forEach(t=>t.stop());
     overlay.remove();
   };
+
   const accept=value=>{
     value=String(value||'').trim();
     if(!value) return false;
@@ -137,92 +148,78 @@ async function zielScanBarcodeToInput(inputId){
     toast('Código lido com sucesso.');
     return true;
   };
+
   overlay.querySelector('#zielStopScan').onclick=stop;
 
   try{
-    if('BarcodeDetector' in window){
-      status.textContent='Leitor da câmera ativo. Aponte para o código do boleto.';
-      stream=await navigator.mediaDevices.getUserMedia({
-        video:{
-          facingMode:{ideal:'environment'},
-          width:{ideal:3840},
-          height:{ideal:2160},
-          aspectRatio:{ideal:16/9}
-        },
-        audio:false
-      });
-      const track=stream.getVideoTracks()[0];
-      try{
-        const caps=track.getCapabilities?.()||{};
-        const advanced={};
-        if(caps.focusMode?.includes('continuous')) advanced.focusMode='continuous';
-        if(caps.width?.max) advanced.width=caps.width.max;
-        if(caps.height?.max) advanced.height=caps.height.max;
-        if(Object.keys(advanced).length) await track.applyConstraints({advanced:[advanced]});
-      }catch(_){}
-      video.srcObject=stream;
-      await video.play();
-      const settings=track.getSettings?.()||{};
-      status.textContent=`Leitor ativo · ${settings.width||video.videoWidth||'?'}×${settings.height||video.videoHeight||'?'} · foco automático quando disponível.`;
-
-      let formats;
-      try{
-        const supported=await BarcodeDetector.getSupportedFormats();
-        const preferred=['itf','code_128','code_39','ean_13','ean_8','codabar'];
-        formats=preferred.filter(f=>supported.includes(f));
-      }catch(_){formats=[];}
-      const detector=new BarcodeDetector(formats.length?{formats}:undefined);
-
-      const scan=async()=>{
-        if(stopped) return;
-        try{
-          const codes=await detector.detect(video);
-          if(codes?.length && accept(codes[0].rawValue)) return;
-        }catch(_){}
-        requestAnimationFrame(scan);
-      };
-      scan();
-      return;
-    }
-
-    status.textContent='Carregando leitor de código de barras...';
+    status.textContent='Carregando mecanismo de leitura...';
     const ZXing=await zielLoadZXing();
     if(stopped) return;
-    zxingReader=new ZXing.BrowserMultiFormatReader();
-    status.textContent='Abrindo câmera traseira em alta resolução...';
-    const highResConstraints={
+
+    const formats=[
+      ZXing.BarcodeFormat.ITF,
+      ZXing.BarcodeFormat.CODE_128,
+      ZXing.BarcodeFormat.CODE_39,
+      ZXing.BarcodeFormat.CODABAR,
+      ZXing.BarcodeFormat.EAN_13,
+      ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.QR_CODE
+    ].filter(Boolean);
+
+    const hints=new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,formats);
+    hints.set(ZXing.DecodeHintType.TRY_HARDER,true);
+    try{hints.set(ZXing.DecodeHintType.ALSO_INVERTED,true);}catch(_){}
+
+    zxingReader=new ZXing.BrowserMultiFormatReader(hints,200);
+
+    const constraints={
       video:{
         facingMode:{ideal:'environment'},
-        width:{ideal:3840},
-        height:{ideal:2160},
+        width:{ideal:3840,min:1280},
+        height:{ideal:2160,min:720},
         aspectRatio:{ideal:16/9}
       },
       audio:false
     };
-    const callback=(result)=>{
-      if(stopped||!result) return;
-      const value=result.getText?result.getText():result.text;
-      accept(value);
+
+    status.textContent='Abrindo câmera traseira em alta resolução...';
+
+    const onResult=(result,err)=>{
+      if(stopped) return;
+      if(result){
+        const value=result.getText?result.getText():result.text;
+        if(accept(value)) return;
+      }
     };
+
     if(typeof zxingReader.decodeFromConstraints==='function'){
-      zxingReader.decodeFromConstraints(highResConstraints,video,callback);
+      controls=await zxingReader.decodeFromConstraints(constraints,video,onResult);
     }else{
-      zxingReader.decodeFromVideoDevice(undefined,video,callback);
+      controls=await zxingReader.decodeFromVideoDevice(undefined,video,onResult);
     }
-    video.addEventListener('loadedmetadata',()=>{
-      if(!stopped) status.textContent=`Leitor ativo · ${video.videoWidth||'?'}×${video.videoHeight||'?'} · aproxime até o código ocupar boa parte da tela.`;
+
+    video.addEventListener('loadedmetadata',async()=>{
+      if(stopped) return;
+      const stream=video.srcObject;
+      const track=stream?.getVideoTracks?.()[0];
+      try{
+        const caps=track?.getCapabilities?.()||{};
+        const advanced={};
+        if(caps.focusMode?.includes('continuous')) advanced.focusMode='continuous';
+        if(caps.zoom){
+          const min=Number(caps.zoom.min||1), max=Number(caps.zoom.max||1);
+          if(max>min) advanced.zoom=Math.min(max,Math.max(min,1.5));
+        }
+        if(Object.keys(advanced).length) await track.applyConstraints({advanced:[advanced]});
+      }catch(_){}
+      const settings=track?.getSettings?.()||{};
+      status.textContent=`Leitor ativo · ${settings.width||video.videoWidth||'?'}×${settings.height||video.videoHeight||'?'} · boleto/QR habilitados`;
     },{once:true});
-    /* callback tratado acima */
-    void 0;
-    /* compatibilidade */
-    (false)&&zxingReader.decodeFromVideoDevice(undefined,video,(result)=>{
-      if(stopped||!result) return;
-      const value=result.getText?result.getText():result.text;
-      accept(value);
-    });
+
   }catch(e){
     stop();
-    toast('Não foi possível iniciar a leitura: '+(e.message||'erro desconhecido'),'error');
+    toast('Não foi possível iniciar o leitor: '+(e.message||'erro desconhecido'),'error');
   }
 }
 
