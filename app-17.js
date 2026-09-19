@@ -156,16 +156,6 @@ async function zielScanBarcodeToInput(inputId){
   </div>`;
   document.body.appendChild(overlay);
 
-  // Em telas móveis, tenta usar a largura total em modo paisagem.
-  try{
-    if(overlay.requestFullscreen && !document.fullscreenElement){
-      await overlay.requestFullscreen();
-    }
-  }catch(_){}
-  try{
-    await screen.orientation?.lock?.('landscape');
-  }catch(_){}
-
   const status=overlay.querySelector('#zielScanStatus');
   const target=overlay.querySelector('#zielQuaggaReader');
 
@@ -175,10 +165,6 @@ async function zielScanBarcodeToInput(inputId){
     try{window.Quagga?.offDetected?.();}catch(_){}
     try{window.Quagga?.offProcessed?.();}catch(_){}
     try{window.Quagga?.stop?.();}catch(_){}
-    try{screen.orientation?.unlock?.();}catch(_){}
-    try{
-      if(document.fullscreenElement===overlay) await document.exitFullscreen();
-    }catch(_){}
     overlay.remove();
   };
 
@@ -195,7 +181,7 @@ async function zielScanBarcodeToInput(inputId){
   overlay.querySelector('#zielStopScan').onclick=()=>stop();
 
   try{
-    status.textContent=(innerWidth>innerHeight?'Modo paisagem ativo':'Gire o celular para o modo paisagem')+' · carregando I25 / ITF...';
+    status.textContent='Gire o celular manualmente para a horizontal · carregando I25 / ITF...';
     const Quagga=await zielLoadQuagga();
     if(stopped) return;
 
