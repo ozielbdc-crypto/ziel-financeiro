@@ -143,13 +143,13 @@ async function zielScanBarcodeToInput(inputId){
 
   let stopped=false;
   const overlay=document.createElement('div');
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:99999;display:flex;align-items:center;justify-content:center;padding:8px';
-  overlay.innerHTML=`<div style="width:min(1200px,calc(100vw - 16px));max-height:calc(100vh - 16px);background:#fff;border-radius:14px;padding:12px;overflow:auto">
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:99999;display:flex;align-items:center;justify-content:center;padding:12px';
+  overlay.innerHTML=`<div id="zielScanPanel" style="width:min(720px,calc(100vw - 24px));background:#fff;border-radius:14px;padding:14px;transition:width .15s ease">
     <div class="section-head">
       <div><b>Ler boleto</b><div class="mini">Leitor dedicado I25 / ITF</div></div>
       <button type="button" class="btn btn-soft" id="zielStopScan">Fechar</button>
     </div>
-    <div id="zielQuaggaReader" style="position:relative;width:100%;aspect-ratio:16/6;min-height:220px;max-height:72vh;overflow:hidden;border-radius:10px;background:#000">
+    <div id="zielQuaggaReader" style="position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:10px;background:#000">
       <div style="position:absolute;left:4%;right:4%;top:38%;height:24%;border:2px solid rgba(255,255,255,.95);border-radius:8px;z-index:3;pointer-events:none"></div>
     </div>
     <div class="mini" id="zielScanStatus" style="margin-top:8px">Carregando leitor I25...</div>
@@ -158,6 +158,21 @@ async function zielScanBarcodeToInput(inputId){
 
   const status=overlay.querySelector('#zielScanStatus');
   const target=overlay.querySelector('#zielQuaggaReader');
+  const panel=overlay.querySelector('#zielScanPanel');
+
+  const fitOrientation=()=>{
+    const landscape=window.innerWidth>window.innerHeight;
+    panel.style.width=landscape?'min(1100px,calc(100vw - 16px))':'min(720px,calc(100vw - 24px))';
+    target.style.aspectRatio=landscape?'16 / 7':'16 / 9';
+    if(!stopped){
+      status.textContent=landscape
+        ? 'Modo horizontal · quadro ampliado para boleto'
+        : 'Gire o celular para a horizontal para ampliar o quadro';
+    }
+  };
+  window.addEventListener('resize',fitOrientation);
+  window.addEventListener('orientationchange',fitOrientation);
+  fitOrientation();
 
   const stop=async()=>{
     if(stopped) return;
@@ -165,6 +180,8 @@ async function zielScanBarcodeToInput(inputId){
     try{window.Quagga?.offDetected?.();}catch(_){}
     try{window.Quagga?.offProcessed?.();}catch(_){}
     try{window.Quagga?.stop?.();}catch(_){}
+    window.removeEventListener('resize',fitOrientation);
+    window.removeEventListener('orientationchange',fitOrientation);
     overlay.remove();
   };
 
@@ -181,7 +198,7 @@ async function zielScanBarcodeToInput(inputId){
   overlay.querySelector('#zielStopScan').onclick=()=>stop();
 
   try{
-    status.textContent='Gire o celular manualmente para a horizontal · carregando I25 / ITF...';
+    status.textContent='Carregando mecanismo I25 / ITF...';
     const Quagga=await zielLoadQuagga();
     if(stopped) return;
 
@@ -245,7 +262,8 @@ async function zielScanBarcodeToInput(inputId){
         if(Object.keys(advanced).length) await track.applyConstraints({advanced:[advanced]});
       }catch(_){}
       const settings=track?.getSettings?.()||{};
-      status.textContent=`I25 ativo · ${settings.width||video?.videoWidth||'?'}×${settings.height||video?.videoHeight||'?'} · use o celular na horizontal e mantenha o código inteiro dentro da moldura`;
+      const landscape=window.innerWidth>window.innerHeight;
+      status.textContent=`I25 ativo · ${settings.width||video?.videoWidth||'?'}×${settings.height||video?.videoHeight||'?'} · ${landscape?'quadro ampliado':'gire o celular para a horizontal'}`;
     },700);
 
   }catch(e){
