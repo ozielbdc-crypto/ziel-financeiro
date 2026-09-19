@@ -150,8 +150,8 @@ async function zielScanBarcodeToInput(inputId){
       <button type="button" class="btn btn-soft" id="zielStopScan">Fechar</button>
     </div>
     <div id="zielCameraStage" style="position:relative;width:100%;height:min(72vh,720px);overflow:hidden;border-radius:10px;background:#000">
-      <div id="zielQuaggaReader" style="position:absolute;left:50%;top:50%;width:min(680px,calc(100vh - 140px));aspect-ratio:16/9;transform:translate(-50%,-50%) rotate(90deg);transform-origin:center;overflow:hidden;background:#000"></div>
-      <div style="position:absolute;top:3%;bottom:3%;left:32%;width:36%;border:2px solid rgba(255,255,255,.98);border-radius:8px;z-index:5;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.18)"></div>
+      <div id="zielQuaggaReader" style="position:absolute;inset:0;overflow:hidden;background:#000"></div>
+      <div style="position:absolute;top:3%;bottom:3%;left:32%;width:36%;border:2px solid rgba(255,255,255,.98);border-radius:8px;z-index:5;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.10)"></div>
     </div>
     <div class="mini" id="zielScanStatus" style="margin-top:8px">Carregando leitor I25...</div>
   </div>`;
@@ -234,7 +234,7 @@ async function zielScanBarcodeToInput(inputId){
       const video=target.querySelector('video');
       if(video){
         video.setAttribute('playsinline','');
-        video.style.cssText='width:100%;height:100%;object-fit:cover';
+        video.style.cssText='width:100%;height:100%;object-fit:contain;background:#000';
       }
       const track=video?.srcObject?.getVideoTracks?.()[0];
       try{
