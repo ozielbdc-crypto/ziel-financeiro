@@ -141,7 +141,7 @@ function zielLooksLikeBoletoBarcode(value){
 async function zielScanBarcodeToInput(inputId){
   if(!navigator.mediaDevices?.getUserMedia) return toast('A câmera não está disponível neste navegador.','error');
 
-  let stopped=false;
+  let stopped=false, rotatedTimer=null, rotatedBusy=false;
   const overlay=document.createElement('div');
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:99999;display:flex;align-items:center;justify-content:center;padding:12px';
   overlay.innerHTML=`<div id="zielScanPanel" style="width:min(720px,calc(100vw - 24px));background:#fff;border-radius:14px;padding:14px;transition:width .15s ease">
@@ -168,6 +168,8 @@ async function zielScanBarcodeToInput(inputId){
     try{window.Quagga?.offDetected?.();}catch(_){}
     try{window.Quagga?.offProcessed?.();}catch(_){}
     try{window.Quagga?.stop?.();}catch(_){}
+    if(rotatedTimer) clearInterval(rotatedTimer);
+    rotatedTimer=null;
     overlay.remove();
   };
 
@@ -248,7 +250,45 @@ async function zielScanBarcodeToInput(inputId){
         if(Object.keys(advanced).length) await track.applyConstraints({advanced:[advanced]});
       }catch(_){}
       const settings=track?.getSettings?.()||{};
-      status.textContent=`I25 ativo · ${settings.width||video?.videoWidth||'?'}×${settings.height||video?.videoHeight||'?'} · quadro vertical ampliado`;
+      status.textContent=`I25 ativo · ${settings.width||video?.videoWidth||'?'}×${settings.height||video?.videoHeight||'?'} · leitura vertical com rotação interna`;
+
+      // Segunda passagem para boleto posicionado de cima para baixo:
+      // captura o frame, gira 90 graus e entrega ao Quagga na orientação horizontal.
+      const rotatedCanvas=document.createElement('canvas');
+      const rotatedCtx=rotatedCanvas.getContext('2d',{willReadFrequently:true});
+      rotatedTimer=setInterval(()=>{
+        if(stopped||rotatedBusy||!video.videoWidth||!video.videoHeight) return;
+        rotatedBusy=true;
+        try{
+          const maxSide=1280;
+          const scale=Math.min(1,maxSide/Math.max(video.videoWidth,video.videoHeight));
+          const sw=Math.max(1,Math.round(video.videoWidth*scale));
+          const sh=Math.max(1,Math.round(video.videoHeight*scale));
+          rotatedCanvas.width=sh;
+          rotatedCanvas.height=sw;
+          rotatedCtx.save();
+          rotatedCtx.clearRect(0,0,rotatedCanvas.width,rotatedCanvas.height);
+          rotatedCtx.translate(rotatedCanvas.width/2,rotatedCanvas.height/2);
+          rotatedCtx.rotate(Math.PI/2);
+          rotatedCtx.drawImage(video,-sw/2,-sh/2,sw,sh);
+          rotatedCtx.restore();
+
+          const src=rotatedCanvas.toDataURL('image/jpeg',0.88);
+          Quagga.decodeSingle({
+            src,
+            numOfWorkers:0,
+            locate:true,
+            locator:{patchSize:'medium',halfSample:false},
+            decoder:{readers:['i2of5_reader','2of5_reader','code_128_reader','code_39_reader']}
+          },result=>{
+            rotatedBusy=false;
+            const code=result?.codeResult?.code||'';
+            if(code) accept(code);
+          });
+        }catch(_){
+          rotatedBusy=false;
+        }
+      },550);
     },700);
 
   }catch(e){
