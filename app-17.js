@@ -159,20 +159,8 @@ async function zielScanBarcodeToInput(inputId){
   const status=overlay.querySelector('#zielScanStatus');
   const target=overlay.querySelector('#zielQuaggaReader');
   const panel=overlay.querySelector('#zielScanPanel');
-
-  const fitOrientation=()=>{
-    const landscape=window.innerWidth>window.innerHeight;
-    panel.style.width=landscape?'min(1100px,calc(100vw - 16px))':'min(720px,calc(100vw - 24px))';
-    target.style.aspectRatio=landscape?'16 / 7':'16 / 9';
-    if(!stopped){
-      status.textContent=landscape
-        ? 'Modo horizontal · quadro ampliado para boleto'
-        : 'Gire o celular para a horizontal para ampliar o quadro';
-    }
-  };
-  window.addEventListener('resize',fitOrientation);
-  window.addEventListener('orientationchange',fitOrientation);
-  fitOrientation();
+  panel.style.width='min(720px,calc(100vw - 24px))';
+  target.style.aspectRatio='16 / 9';
 
   const stop=async()=>{
     if(stopped) return;
@@ -180,8 +168,6 @@ async function zielScanBarcodeToInput(inputId){
     try{window.Quagga?.offDetected?.();}catch(_){}
     try{window.Quagga?.offProcessed?.();}catch(_){}
     try{window.Quagga?.stop?.();}catch(_){}
-    window.removeEventListener('resize',fitOrientation);
-    window.removeEventListener('orientationchange',fitOrientation);
     overlay.remove();
   };
 
@@ -262,8 +248,7 @@ async function zielScanBarcodeToInput(inputId){
         if(Object.keys(advanced).length) await track.applyConstraints({advanced:[advanced]});
       }catch(_){}
       const settings=track?.getSettings?.()||{};
-      const landscape=window.innerWidth>window.innerHeight;
-      status.textContent=`I25 ativo · ${settings.width||video?.videoWidth||'?'}×${settings.height||video?.videoHeight||'?'} · ${landscape?'quadro ampliado':'gire o celular para a horizontal'}`;
+      status.textContent=`I25 ativo · ${settings.width||video?.videoWidth||'?'}×${settings.height||video?.videoHeight||'?'} · leitura em modo vertical`;
     },700);
 
   }catch(e){
