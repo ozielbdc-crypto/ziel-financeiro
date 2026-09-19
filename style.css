@@ -103,3 +103,10 @@ body.menu-open{overflow:hidden}
   .layout{display:block}.content{padding:0}.card{box-shadow:none;break-inside:avoid}
 }
 .dashboard-kpis{grid-template-columns:repeat(6,minmax(0,1fr))}.kpi small{display:block;margin-top:6px;line-height:1.25}.wallet-list{display:grid;gap:8px}.wallet-line{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}.wallet-line span{display:grid;gap:2px}.wallet-line small{color:var(--muted)}.due-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.due-card{display:flex;justify-content:space-between;align-items:center}.due-card span{color:var(--muted);font-weight:700}.due-card strong{font-size:20px}.profit-indicators{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.profit-indicators>div{padding:12px;border:1px solid var(--line);border-radius:10px;background:#fbfdff;display:grid;gap:6px}.profit-indicators strong{font-size:20px}.profit-table{min-width:620px}@media(max-width:1200px){.dashboard-kpis{grid-template-columns:repeat(3,1fr)}}@media(max-width:900px){.dashboard-kpis{grid-template-columns:repeat(2,1fr)}.due-grid{grid-template-columns:1fr 1fr 1fr}.profit-indicators{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.dashboard-kpis{grid-template-columns:1fr 1fr}.due-grid{grid-template-columns:1fr}.profit-indicators{grid-template-columns:1fr 1fr}}
+
+/* Fonte do menu lateral */
+.sidebar{font-family:'Montserrat',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif}
+.brand b{font-weight:700;letter-spacing:.1px}
+.brand small{font-weight:500;line-height:1.35}
+.nav button{font-family:inherit;font-weight:600;letter-spacing:.05px}
+.sidebar-foot{font-family:inherit;font-weight:500}
