@@ -142,9 +142,28 @@ async function zielScanBarcodeToInput(inputId){
   try{
     if('BarcodeDetector' in window){
       status.textContent='Leitor da câmera ativo. Aponte para o código do boleto.';
-      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+      stream=await navigator.mediaDevices.getUserMedia({
+        video:{
+          facingMode:{ideal:'environment'},
+          width:{ideal:3840},
+          height:{ideal:2160},
+          aspectRatio:{ideal:16/9}
+        },
+        audio:false
+      });
+      const track=stream.getVideoTracks()[0];
+      try{
+        const caps=track.getCapabilities?.()||{};
+        const advanced={};
+        if(caps.focusMode?.includes('continuous')) advanced.focusMode='continuous';
+        if(caps.width?.max) advanced.width=caps.width.max;
+        if(caps.height?.max) advanced.height=caps.height.max;
+        if(Object.keys(advanced).length) await track.applyConstraints({advanced:[advanced]});
+      }catch(_){}
       video.srcObject=stream;
       await video.play();
+      const settings=track.getSettings?.()||{};
+      status.textContent=`Leitor ativo · ${settings.width||video.videoWidth||'?'}×${settings.height||video.videoHeight||'?'} · foco automático quando disponível.`;
 
       let formats;
       try{
@@ -170,8 +189,33 @@ async function zielScanBarcodeToInput(inputId){
     const ZXing=await zielLoadZXing();
     if(stopped) return;
     zxingReader=new ZXing.BrowserMultiFormatReader();
-    status.textContent='Leitor ativo. Aponte para o código do boleto.';
-    zxingReader.decodeFromVideoDevice(undefined,video,(result)=>{
+    status.textContent='Abrindo câmera traseira em alta resolução...';
+    const highResConstraints={
+      video:{
+        facingMode:{ideal:'environment'},
+        width:{ideal:3840},
+        height:{ideal:2160},
+        aspectRatio:{ideal:16/9}
+      },
+      audio:false
+    };
+    const callback=(result)=>{
+      if(stopped||!result) return;
+      const value=result.getText?result.getText():result.text;
+      accept(value);
+    };
+    if(typeof zxingReader.decodeFromConstraints==='function'){
+      zxingReader.decodeFromConstraints(highResConstraints,video,callback);
+    }else{
+      zxingReader.decodeFromVideoDevice(undefined,video,callback);
+    }
+    video.addEventListener('loadedmetadata',()=>{
+      if(!stopped) status.textContent=`Leitor ativo · ${video.videoWidth||'?'}×${video.videoHeight||'?'} · aproxime até o código ocupar boa parte da tela.`;
+    },{once:true});
+    /* callback tratado acima */
+    void 0;
+    /* compatibilidade */
+    (false)&&zxingReader.decodeFromVideoDevice(undefined,video,(result)=>{
       if(stopped||!result) return;
       const value=result.getText?result.getText():result.text;
       accept(value);
