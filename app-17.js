@@ -311,7 +311,7 @@ accountForm = function(kind){
     <div class="field"><label>Empresa</label><select id="aBiz" required>${businessOptions(false,state.businessFilter)}</select></div>
     <div class="field"><label>${pay?'Favorecido':'Cliente / Origem'}</label><input class="input" id="aParty" required></div>
     <div class="field"><label>Categoria</label><select id="aCat" required>${categoryOptions(pay?'Saída':'Entrada')}</select></div>
-    <div class="field"><label>Valor</label><input class="input" id="aAmount" type="number" inputmode="decimal" pattern="[0-9.,]*" step="0.01" min="0" required></div>
+    <div class="field"><label>Valor</label><input class="input" id="aAmount" type="number" inputmode="decimal" step="0.01" min="0" required></div>
     <div class="field span-2"><label>Descrição</label><input class="input" id="aDesc" required></div>
     <div class="field"><label>Emissão</label><input class="input" id="aIssue" type="date" value="${iso()}" required></div>
     <div class="field"><label>Vencimento</label><input class="input" id="aDue" type="date" value="${iso()}" required></div>
