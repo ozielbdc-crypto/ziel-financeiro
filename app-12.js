@@ -26,7 +26,7 @@ renderPayables = function(){
         <option value="all">Todas</option>
       </select>
       <select id="payStatus"><option value="">Todas as situações</option><option>Pendente</option><option>Pago</option><option>Cancelado</option></select>
-      <select id="payFornecedor"><option value="">Fornecedor</option>${suppliers.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}</select>
+      <select id="payFornecedor"><option value="">Todos os fornecedores</option>${suppliers.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}</select>
     </div>
     <div class="grid kpis dashboard-kpis" style="margin-top:12px" id="paySummary"></div>
    </div>
