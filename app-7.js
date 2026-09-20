@@ -38,7 +38,15 @@ document.addEventListener('click', async e=>{
 // Conferência de Caixa Físico
 renderReconciliation = function(){
   const bank=state.businessFilter?state.bank.filter(b=>b.business_id===state.businessFilter):state.bank;
-  const tx=filtered(state.transactions).filter(t=>t.reconciliation_status!=='Conciliado');
+  const cashWalletIds=new Set(
+    state.wallets
+      .filter(w=>String(w.type||'').toLowerCase().includes('caixa') || String(w.name||'').toLowerCase().includes('caixa'))
+      .map(w=>w.id)
+  );
+  const tx=filtered(state.transactions).filter(t=>
+    t.reconciliation_status!=='Conciliado' &&
+    !cashWalletIds.has(t.wallet_id)
+  );
   $('content').innerHTML=
     setTitle(
       'Conciliação Bancária',
