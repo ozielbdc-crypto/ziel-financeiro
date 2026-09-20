@@ -13,29 +13,49 @@ async function submitTransfer(e){e.preventDefault();if($('trSource').value===$('
 function openSettle(kind,id){const item=(kind==='pay'?state.payables:state.receivables).find(x=>x.id===id);modal(kind==='pay'?'Baixar pagamento':'Baixar recebimento',`<form id="settleForm" class="form-grid"><div class="field span-2"><label>${esc(item.description)}</label><strong>${fmt(item.amount)}</strong></div><div class="field"><label>Carteira</label><select id="sWallet" required>${walletOptions(item.business_id)}</select></div><div class="field"><label>Data</label><input class="input" id="sDate" type="date" value="${iso()}" required></div><div class="field"><label>Forma</label><select id="sMethod"><option>Pix</option><option>Dinheiro</option><option>Cartão Débito</option><option>Cartão Crédito</option><option>Boleto</option><option>Transferência</option></select></div><div class="actions span-2"><button class="btn btn-green">Confirmar baixa</button></div></form>`);$('settleForm').onsubmit=async e=>{e.preventDefault();const fn=kind==='pay'?'pay_payable':'receive_receivable';await perform(async()=>supabase.rpc(fn,{p_id:id,p_wallet:$('sWallet').value,p_date:$('sDate').value,p_method:$('sMethod').value}),kind==='pay'?'Pagamento registrado.':'Recebimento registrado.')}}
 function openReconcile(id){const b=state.bank.find(x=>x.id===id);const candidates=state.transactions.filter(t=>t.wallet_id===b.wallet_id&&t.reconciliation_status!=='Conciliado').sort((a,c)=>Math.abs(Number(a.amount)-Math.abs(Number(b.amount)))-Math.abs(Number(c.amount)-Math.abs(Number(b.amount))));modal('Conciliar lançamento',`<p class="mini">Extrato: ${br(b.bank_date)} — ${esc(b.description)} — <b>${fmt(b.amount)}</b></p><form id="reconForm"><div class="field"><label>Lançamento correspondente</label><select id="rTx" required>${candidates.map(t=>`<option value="${t.id}">${br(t.transaction_date)} — ${esc(t.description)} — ${fmt(t.amount)} (${t.type})</option>`).join('')}</select></div><div class="actions"><button class="btn btn-primary">Conciliar</button></div></form>`);$('reconForm').onsubmit=async e=>{e.preventDefault();await perform(async()=>supabase.rpc('reconcile_bank_entry',{p_bank:id,p_transaction:$('rTx').value}),'Conciliação atualizada.')}}
 
+let zielActionInProgress=false;
 async function perform(action,ok){
-  try{
-    const {error}=await action();
-    if(error) throw error;
-  }catch(e){
-    console.error(e);
-    toast(e.message||'Erro ao salvar.','error');
+  if(zielActionInProgress){
+    toast('Operação já está sendo processada.','error');
     return false;
   }
 
-  closeModal();
-  toast(ok);
+  zielActionInProgress=true;
+  const submitButtons=[...document.querySelectorAll('#modalRoot button[type="submit"], #modalRoot .btn-primary')];
+  submitButtons.forEach(b=>{b.dataset.zielOldDisabled=b.disabled?'1':'0';b.disabled=true;});
 
   try{
-    await loadAll();
-  }catch(e){
-    console.error('Falha ao atualizar dados após salvar:',e);
-    await new Promise(r=>setTimeout(r,500));
-    try{await loadAll()}catch(e2){console.error('Segunda falha ao atualizar dados:',e2)}
-  }
+    try{
+      const {error}=await action();
+      if(error) throw error;
+    }catch(e){
+      console.error(e);
+      const msg=String(e?.message||e||'');
+      if(/load failed|failed to fetch|networkerror|network request failed/i.test(msg)){
+        toast('Falha de conexão com o banco. Atualize a tela antes de tentar salvar novamente.','error');
+      }else{
+        toast(msg||'Erro ao salvar.','error');
+      }
+      return false;
+    }
 
-  try{showPage(document.querySelector('.nav button.active')?.dataset.page||'dashboard')}catch(e){console.error(e)}
-  return true;
+    closeModal();
+    toast(ok);
+
+    try{
+      await loadAll();
+    }catch(e){
+      console.error('Falha ao atualizar dados após salvar:',e);
+      await new Promise(r=>setTimeout(r,500));
+      try{await loadAll()}catch(e2){console.error('Segunda falha ao atualizar dados:',e2)}
+    }
+
+    try{showPage(document.querySelector('.nav button.active')?.dataset.page||'dashboard')}catch(e){console.error(e)}
+    return true;
+  }finally{
+    zielActionInProgress=false;
+    submitButtons.forEach(b=>{if(document.body.contains(b)) b.disabled=b.dataset.zielOldDisabled==='1';});
+  }
 }
 
 document.addEventListener('click',async e=>{const d=e.target.closest('[data-del-tx]');if(d&&confirm('Excluir este lançamento manual?'))await perform(async()=>supabase.from('transactions').delete().eq('id',d.dataset.delTx),'Lançamento excluído.');const p=e.target.closest('[data-pay]');if(p)openSettle('pay',p.dataset.pay);const r=e.target.closest('[data-receive]');if(r)openSettle('rec',r.dataset.receive);const c=e.target.closest('[data-recon]');if(c)openReconcile(c.dataset.recon);const f=e.target.closest('[data-toggle-fixed]');if(f)await perform(async()=>supabase.rpc('toggle_recurring_payable',{p_id:f.dataset.toggleFixed,p_active:f.dataset.active!=='true'}),f.dataset.active==='true'?'Recorrência pausada.':'Recorrência reativada.');});
