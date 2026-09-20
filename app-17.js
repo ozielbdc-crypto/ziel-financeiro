@@ -1,5 +1,90 @@
 // Extensão: dados de pagamento em contas a pagar + leitura de código de barras
 
+
+function zielParseBoleto(code){
+  const digits=String(code||'').replace(/\D/g,'');
+  let barcode='';
+
+  // Código de barras bancário FEBRABAN: 44 dígitos.
+  if(digits.length===44){
+    barcode=digits;
+  }
+  // Linha digitável bancária: 47 dígitos -> reconstrói os 44 dígitos.
+  else if(digits.length===47){
+    barcode=
+      digits.slice(0,4)+
+      digits.slice(32,33)+
+      digits.slice(33,47)+
+      digits.slice(4,9)+
+      digits.slice(10,20)+
+      digits.slice(21,31);
+  }else{
+    return {amount:null,due_date:null};
+  }
+
+  if(barcode.length!==44) return {amount:null,due_date:null};
+
+  // Em boletos bancários, posições 10-19 (índices 9-18) representam o valor em centavos.
+  const amountDigits=barcode.slice(9,19);
+  let amount=null;
+  if(/^\d{10}$/.test(amountDigits)){
+    const cents=Number(amountDigits);
+    if(Number.isFinite(cents) && cents>0) amount=cents/100;
+  }
+
+  // Posições 6-9 (índices 5-8) representam o fator de vencimento.
+  const factorDigits=barcode.slice(5,9);
+  let due_date=null;
+  if(/^\d{4}$/.test(factorDigits)){
+    const factor=Number(factorDigits);
+    if(factor>0){
+      // Nova contagem FEBRABAN: fator 1000 = 22/02/2025.
+      // Para boletos atuais, fatores >=1000 usam a nova base.
+      if(factor>=1000){
+        const base=new Date(Date.UTC(2025,1,22));
+        const d=new Date(base.getTime()+(factor-1000)*86400000);
+        const y=d.getUTCFullYear(),m=String(d.getUTCMonth()+1).padStart(2,'0'),day=String(d.getUTCDate()).padStart(2,'0');
+        due_date=`${y}-${m}-${day}`;
+      }
+    }
+  }
+
+  return {amount,due_date};
+}
+
+function zielApplyBoletoData(input){
+  if(!input) return;
+  const parsed=zielParseBoleto(input.value);
+
+  // Conta a pagar simples.
+  if(input.id==='aBoletoCode'){
+    const amount=document.getElementById('aAmount');
+    const due=document.getElementById('aDue');
+    if(amount) amount.value=parsed.amount!=null?parsed.amount.toFixed(2):'';
+    if(due) due.value=parsed.due_date||'';
+    return;
+  }
+
+  // Parcela de conta a pagar.
+  const row=input.closest?.('.installment-row');
+  if(row){
+    const amount=row.querySelector('.ipAmount');
+    const due=row.querySelector('.ipDue');
+    if(amount) amount.value=parsed.amount!=null?parsed.amount.toFixed(2):'';
+    if(due) due.value=parsed.due_date||'';
+    amount?.dispatchEvent(new Event('input',{bubbles:true}));
+  }
+}
+
+function zielBindBoletoAutofill(input){
+  if(!input || input.dataset.zielBoletoAutofill==='1') return;
+  input.dataset.zielBoletoAutofill='1';
+  const apply=()=>zielApplyBoletoData(input);
+  input.addEventListener('change',apply);
+  input.addEventListener('blur',apply);
+  input.addEventListener('paste',()=>setTimeout(apply,0));
+}
+
 function zielPaymentFields(prefix, data={}){
   const method=data.payment_method||'';
   const pixType=data.pix_key_type||'';
@@ -60,6 +145,7 @@ function zielBindPaymentFields(prefix){
   };
   sel.onchange=paint;
   paint();
+  zielBindBoletoAutofill(document.getElementById(prefix+'BoletoCode'));
 }
 
 function zielPaymentData(prefix){
@@ -177,7 +263,10 @@ async function zielScanBarcodeToInput(inputId){
     const digits=zielOnlyDigits(value);
     if(!zielLooksLikeBoletoBarcode(digits)) return false;
     const input=document.getElementById(inputId);
-    if(input) input.value=digits;
+    if(input){
+      input.value=digits;
+      zielApplyBoletoData(input);
+    }
     await stop();
     toast('Código do boleto lido com sucesso.');
     return true;
@@ -457,6 +546,7 @@ openInstallmentPayables = function(){
     rows.appendChild(div);
     div.querySelector('.removeInstallment').onclick=()=>{if(rows.querySelectorAll('.installment-row').length>1){div.remove();renumber();updateTotals();}};
     div.querySelector('.ipAmount').oninput=updateTotals;
+    zielBindBoletoAutofill(div.querySelector('.ipBoletoCode'));
     div.querySelector('.ipCopyBoleto').onclick=async()=>{const input=div.querySelector('.ipBoletoCode'); if(!input.value)return toast('Nada para copiar.','error'); try{await navigator.clipboard.writeText(input.value);toast('Copiado.');}catch(_){input.select();document.execCommand('copy');toast('Copiado.');}};
     div.querySelector('.ipScanBoleto').onclick=()=>{const input=div.querySelector('.ipBoletoCode'); if(!input.id)input.id='ipBoleto'+Date.now()+Math.random().toString(16).slice(2); zielScanBarcodeToInput(input.id);};
     updateTotals();paintRows();
