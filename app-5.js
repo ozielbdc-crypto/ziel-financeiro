@@ -11,15 +11,9 @@ async function deletePayableWithTransaction(id){
   const payable = state.payables.find(p => p.id === id);
   if (!payable) return {error:{message:'Conta a pagar não encontrada.'}};
 
-  // Exclui primeiro o lançamento financeiro criado na baixa.
-  if (payable.transaction_id) {
-    const tx = await supabase.from('transactions').delete().eq('id', payable.transaction_id);
-    if (tx.error) return tx;
-  } else {
-    // Compatibilidade com registros antigos: procura pelo vínculo source_id.
-    const tx = await supabase.from('transactions').delete().eq('source_id', id);
-    if (tx.error) return tx;
-  }
+  // Uma conta pode possuir vários lançamentos por causa das baixas parciais.
+  const tx = await supabase.from('transactions').delete().eq('source_id', id);
+  if (tx.error) return tx;
 
   return await supabase.from('payables').delete().eq('id', id);
 }
