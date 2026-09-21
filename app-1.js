@@ -52,7 +52,7 @@ async function bootstrap(){
  await loadAll();renderShell();
 }
 async function loadAll(){
- try{await supabase.rpc('generate_recurring_payables',{p_until:new Date(Date.now()+40*864e5).toISOString().slice(0,10)})}catch(_){}
+ try{await supabase.rpc('generate_recurring_payables',{p_until:iso()})}catch(_){}
  const names=['businesses','wallets','categories','transactions','payables','receivables','bank_entries','transfers','recurring_payables'];
  const orders={transactions:['transaction_date',{ascending:false}],payables:['due_date',{ascending:true}],receivables:['due_date',{ascending:true}],bank_entries:['bank_date',{ascending:false}],businesses:['name',{ascending:true}],wallets:['name',{ascending:true}],categories:['name',{ascending:true}],transfers:['transfer_date',{ascending:false}],recurring_payables:['created_at',{ascending:false}]};
  for(const n of names){let q=supabase.from(n).select('*');if(orders[n])q=q.order(orders[n][0],orders[n][1]);const {data,error}=await q;if(error)throw error;state[n==='bank_entries'?'bank':n]=data||[]}
