@@ -1,3 +1,4 @@
+function payableOpenAmount(p){return Math.max(0,Number(p.amount||0)-Number(p.paid_amount||0));}
 // Restaura a exibição responsiva de Contas a Pagar após a extensão de dados de pagamento.
 payableTable = function(arr, actions=true){
   if(!arr.length) return '<div class="empty">Nenhuma conta a pagar.</div>';
@@ -10,7 +11,7 @@ payableTable = function(arr, actions=true){
       <td>${esc(businessName(p.business_id))}</td>
       <td>${esc(p.supplier)}</td>
       <td>${esc(p.description)}${p.payment_method?`<div class="mini">${esc(p.payment_method)}</div>`:''}</td>
-      <td><b>${fmt(p.amount)}</b></td>
+      <td><b>${fmt(payableOpenAmount(p))}</b></td>
       <td>${badge(st)}</td>
       ${actions?`<td><div class="actions">
         ${hasPayment?`<button class="btn btn-soft" data-payment-details="${p.id}">Dados de pagamento</button>`:''}
@@ -26,7 +27,7 @@ payableTable = function(arr, actions=true){
     return `<div class="mobile-record">
       <div class="mobile-record-head">
         <div class="mobile-record-title">${esc(p.description)}</div>
-        <div class="mobile-record-value">${fmt(p.amount)}</div>
+        <div class="mobile-record-value">${fmt(payableOpenAmount(p))}</div>
       </div>
       <div class="mobile-record-grid">
         <div class="mobile-field"><span>Vencimento</span><b>${br(p.due_date)}</b></div>
