@@ -14,7 +14,7 @@ const supabase = window.supabase.createClient(url, anon, {
 const app=document.getElementById('app');
 const fmt=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const br=d=>d?new Date(d+'T12:00:00').toLocaleDateString('pt-BR'):'';
-const iso=()=>new Date().toISOString().slice(0,10);
+const iso=(d=new Date())=>{const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`};
 const esc=s=>String(s??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]));
 let state={session:null,profile:null,businesses:[],wallets:[],categories:[],transactions:[],payables:[],receivables:[],bank:[],transfers:[],recurring_payables:[],businessFilter:'',charts:{}};
 
