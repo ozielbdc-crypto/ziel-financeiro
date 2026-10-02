@@ -16,7 +16,7 @@ const fmt=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL
 const br=d=>d?new Date(d+'T12:00:00').toLocaleDateString('pt-BR'):'';
 const iso=(d=new Date())=>{const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`};
 const esc=s=>String(s??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]));
-let state={session:null,profile:null,businesses:[],wallets:[],categories:[],transactions:[],payables:[],receivables:[],bank:[],transfers:[],recurring_payables:[],businessFilter:'',charts:{}};
+let state={session:null,profile:null,businesses:[],wallets:[],categories:[],transactions:[],payables:[],receivables:[],bank:[],transfers:[],recurring_payables:[],wallet_balance_checks:[],businessFilter:'',charts:{}};
 
 function toast(msg,type='ok'){const x=document.createElement('div');x.className='toast '+type;x.textContent=msg;document.body.appendChild(x);setTimeout(()=>x.remove(),3200)}
 function loading(msg='Carregando...'){app.innerHTML=`<div class="auth-shell"><div class="auth-card"><img class="auth-logo" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22260%22%20height%3D%2280%22%20viewBox%3D%220%200%20260%2080%22%3E%3Crect%20width%3D%22260%22%20height%3D%2280%22%20rx%3D%2212%22%20fill%3D%22%2317365D%22%2F%3E%3Ctext%20x%3D%2222%22%20y%3D%2238%22%20font-family%3D%22Arial%2Csans-serif%22%20font-size%3D%2230%22%20font-weight%3D%22700%22%20fill%3D%22white%22%3EZIEL%3C%2Ftext%3E%3Ctext%20x%3D%2222%22%20y%3D%2261%22%20font-family%3D%22Arial%2Csans-serif%22%20font-size%3D%2213%22%20fill%3D%22white%22%3EGEST%C3%83O%20EMPRESARIAL%3C%2Ftext%3E%3C%2Fsvg%3E"><p>${esc(msg)}</p></div></div>`}
@@ -53,8 +53,8 @@ async function bootstrap(){
 }
 async function loadAll(){
  try{await supabase.rpc('generate_recurring_payables',{p_until:iso()})}catch(_){}
- const names=['businesses','wallets','categories','transactions','payables','receivables','bank_entries','transfers','recurring_payables'];
- const orders={transactions:['transaction_date',{ascending:false}],payables:['due_date',{ascending:true}],receivables:['due_date',{ascending:true}],bank_entries:['bank_date',{ascending:false}],businesses:['name',{ascending:true}],wallets:['name',{ascending:true}],categories:['name',{ascending:true}],transfers:['transfer_date',{ascending:false}],recurring_payables:['created_at',{ascending:false}]};
+ const names=['businesses','wallets','categories','transactions','payables','receivables','bank_entries','transfers','recurring_payables','wallet_balance_checks'];
+ const orders={transactions:['transaction_date',{ascending:false}],payables:['due_date',{ascending:true}],receivables:['due_date',{ascending:true}],bank_entries:['bank_date',{ascending:false}],businesses:['name',{ascending:true}],wallets:['name',{ascending:true}],categories:['name',{ascending:true}],transfers:['transfer_date',{ascending:false}],recurring_payables:['created_at',{ascending:false}],wallet_balance_checks:['checked_at',{ascending:false}]};
  for(const n of names){let q=supabase.from(n).select('*');if(orders[n])q=q.order(orders[n][0],orders[n][1]);const {data,error}=await q;if(error)throw error;state[n==='bank_entries'?'bank':n]=data||[]}
  const {data:p}=await supabase.from('profiles').select('*').maybeSingle();state.profile=p;
 }
