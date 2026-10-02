@@ -196,3 +196,102 @@ body.menu-open{overflow:hidden}
  .transfer-entry-head{align-items:flex-start}
  .transfer-entry-amount{font-size:16px}
 }
+
+
+/* Onde está meu dinheiro? — posição por carteira e histórico de conferência */
+.zbal-page{display:grid;gap:16px;min-width:0}
+.zbal-topstats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
+.zbal-topstat{display:grid;gap:7px;padding:17px 15px;background:#fff;border:1px solid #dfe7f0;border-radius:13px;min-width:0;box-shadow:var(--shadow)}
+.zbal-topstat>span{font-size:12px;font-weight:750;color:#67788b}
+.zbal-topstat>strong{font-size:23px;line-height:1.12;color:#173d62;overflow-wrap:anywhere}
+.zbal-topstat>small{font-size:11px;color:#6c7c8f;line-height:1.35}
+.zbal-notice{border:1px solid #d0e2f2;background:#f4f9fe;border-radius:11px;padding:13px 15px;font-size:12px;line-height:1.6;color:#344d67}
+.zbal-section{min-width:0}
+.zbal-section-top{display:flex;align-items:end;justify-content:space-between;gap:15px;margin-bottom:13px}
+.zbal-section-top h2{font-size:19px;margin:0 0 4px;color:#203d58}
+.zbal-section-top p{margin:0}
+.zbal-section-top .field{margin:0;min-width:205px}
+.zbal-section-top label{font-size:11px}
+.zbal-business{margin-bottom:16px;border:1px solid #dce6ef;border-radius:14px;padding:15px;background:#fff;min-width:0}
+.zbal-business-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:13px;padding-bottom:12px;border-bottom:1px solid #e7edf4}
+.zbal-business-head h3{font-size:17px;color:#193d5e;margin:0 0 4px}
+.zbal-business-head>div:first-child>span{font-size:12px;color:#687b8b}
+.zbal-business-head>div:last-child{display:grid;gap:4px;text-align:right}
+.zbal-business-head small{font-size:11px;color:#64788b}
+.zbal-business-head strong{font-size:19px;color:#173d62}
+.zbal-wallet-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.zbal-wallet-card{border:1px solid #dfe6ee;border-radius:11px;padding:14px;display:grid;gap:13px;min-width:0;background:#fcfdff}
+.zbal-wallet-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.zbal-wallet-head>div{min-width:0}
+.zbal-wallet-type{font-size:11px;color:#657b90}
+.zbal-wallet-head h3{font-size:17px;margin:3px 0 0;overflow-wrap:anywhere;color:#152e46}
+.zbal-chip{font-size:10px;line-height:1.35;font-weight:800;text-align:center;border-radius:999px;padding:5px 8px;max-width:160px;background:#eef3f9;color:#52687b;flex:0 0 auto}
+.zbal-chip.ok{background:#dff5e9;color:#136b49}
+.zbal-chip.diff{background:#ffe5e8;color:#a52b3e}
+.zbal-chip.stale{background:#fff0d5;color:#915a08}
+.zbal-chip.never{background:#e8eef5;color:#52667a}
+.zbal-wallet-current{display:grid;gap:5px;background:#edf5fd;border-radius:10px;padding:11px 12px}
+.zbal-wallet-current span{font-size:11px;font-weight:750;color:#496786}
+.zbal-wallet-current strong{font-size:22px;line-height:1.15;color:#184976;overflow-wrap:anywhere}
+.zbal-wallet-compare{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.zbal-wallet-compare>div{min-width:0;display:grid;gap:5px}
+.zbal-wallet-compare small{font-size:10px;line-height:1.4;color:#708194}
+.zbal-wallet-compare b{font-size:13px;overflow-wrap:anywhere}
+.zbal-wallet-meta{font-size:11px;color:#748495}
+.zbal-wallet-meta strong{color:#475e74}
+.zbal-wallet-alert{border:1px solid #f2daae;border-radius:8px;padding:8px 10px;font-size:11px;color:#865614;background:#fff9ef;line-height:1.5;margin:0}
+.zbal-wallet-actions{display:flex;gap:8px;margin-top:auto}
+.zbal-wallet-actions .btn{font-size:12px;min-height:40px;flex:1;min-width:0}
+.zbal-bottom-note{line-height:1.65;margin:0 0 12px}
+.zbal-check-form{display:grid;gap:14px}
+.zbal-check-wallet{display:grid;gap:4px;padding:12px 13px;border-radius:10px;border:1px solid #e2eaf2}
+.zbal-check-wallet strong{font-size:18px}
+.zbal-check-wallet span{font-size:12px;color:var(--muted)}
+.zbal-check-system{display:grid;gap:6px;padding:15px;border-radius:10px;background:#eff6fd}
+.zbal-check-system small{font-size:12px;color:#466883;font-weight:750}
+.zbal-check-system strong{font-size:26px;color:#184976}
+.zbal-check-form .field{margin:0}
+.zbal-check-result{min-height:40px;padding:12px;border:1px solid #d9e5f0;border-radius:9px;background:#fafcfe;font-size:13px;line-height:1.5}
+.zbal-check-result strong{font-size:14px}
+.zbal-check-form>p.mini{line-height:1.6;margin:0}
+.zbal-check-actions{display:flex;justify-content:flex-end;gap:8px}
+.zbal-check-actions .btn{min-height:42px}
+.zbal-history{display:grid;gap:12px}
+.zbal-history-intro{display:grid;gap:4px}
+.zbal-history-intro strong{font-size:18px}
+.zbal-history-intro span{font-size:12px;color:var(--muted)}
+.zbal-history>p.mini{line-height:1.5;margin:0}
+.zbal-history-row{border:1px solid #e1e9f1;border-radius:10px;padding:12px;display:grid;gap:10px}
+.zbal-history-head{display:flex;justify-content:space-between;align-items:center;gap:9px}
+.zbal-history-head strong{font-size:12px;color:#51667b}
+.zbal-history-values{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.zbal-history-values>div{display:grid;gap:4px}
+.zbal-history-values small{font-size:11px;color:#6c7c8e}
+.zbal-history-values b{font-size:16px;overflow-wrap:anywhere}
+.zbal-history-row p{margin:0;font-size:12px;color:#465c72;overflow-wrap:anywhere}
+@media(max-width:1250px){.zbal-topstats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:1000px){.zbal-wallet-grid{grid-template-columns:1fr}}
+@media(max-width:600px){
+  .zbal-page{gap:12px}
+  .zbal-topstats{gap:8px}
+  .zbal-topstat{padding:11px}
+  .zbal-topstat>strong{font-size:18px}
+  .zbal-business{padding:11px}
+  .zbal-business-head h3{font-size:15px}
+  .zbal-business-head strong{font-size:16px}
+  .zbal-section-top{flex-direction:column;align-items:stretch}
+  .zbal-section-top .field{min-width:0}
+  .zbal-wallet-card{padding:11px;gap:11px}
+  .zbal-wallet-head h3{font-size:16px}
+  .zbal-chip{font-size:9.5px;max-width:130px}
+  .zbal-wallet-current strong{font-size:20px}
+  .zbal-wallet-compare{grid-template-columns:1fr 1fr}
+  .zbal-wallet-compare>div:last-child{grid-column:1/-1}
+  .zbal-wallet-actions{display:grid;grid-template-columns:1fr 1fr}
+  .zbal-wallet-actions .btn{padding:10px 7px}
+  .zbal-check-actions{display:grid;grid-template-columns:1fr 1fr}
+}
+@media(max-width:380px){
+  .zbal-topstats{grid-template-columns:1fr}
+  .zbal-wallet-actions{grid-template-columns:1fr}
+}
