@@ -295,3 +295,58 @@ body.menu-open{overflow:hidden}
   .zbal-topstats{grid-template-columns:1fr}
   .zbal-wallet-actions{grid-template-columns:1fr}
 }
+
+
+/* Gestão de carteiras por local real do dinheiro */
+.zwallet-page{display:grid;gap:14px;min-width:0}
+.zwallet-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.zwallet-summary>div{display:grid;gap:6px;padding:15px;background:#fff;border:1px solid #dfe7ef;border-radius:12px;box-shadow:var(--shadow)}
+.zwallet-summary span{font-size:12px;color:#63778a;font-weight:750}
+.zwallet-summary strong{font-size:22px;color:#173d62;overflow-wrap:anywhere}
+.zwallet-summary small{font-size:11px;color:#718193;line-height:1.4}
+.zwallet-rule{padding:13px 15px;border:1px solid #cfe0ee;border-radius:11px;background:#f5f9fd;color:#344d66}
+.zwallet-rule>div{font-size:13px;margin-bottom:4px}
+.zwallet-rule p{margin:0;font-size:12px;line-height:1.55}
+.zwallet-guide{display:grid;gap:5px;padding:13px 15px;border:1px solid #f0d9a8;border-radius:11px;background:#fff9ef;color:#76500f}
+.zwallet-guide strong{font-size:13px}
+.zwallet-guide span{font-size:12px;line-height:1.55}
+.zwallet-toolbar{display:grid;grid-template-columns:180px minmax(220px,1fr);gap:10px;align-items:end}
+.zwallet-toolbar .field{margin:0}
+.zwallet-business{display:grid;gap:10px;margin-top:2px}
+.zwallet-business-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:0 2px}
+.zwallet-business-head h3{margin:0;font-size:17px;color:#1b3d5b}
+.zwallet-business-head span{font-size:11px;color:#738293}
+.zwallet-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.zwallet-card{display:grid;gap:12px;padding:14px;background:#fff;border:1px solid #dfe6ed;border-radius:12px;min-width:0}
+.zwallet-card.is-generic{border-color:#e7c77d}
+.zwallet-card.is-inactive{opacity:.72;background:#f7f9fb}
+.zwallet-card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.zwallet-card-head>div{min-width:0}
+.zwallet-type{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:#678097}
+.zwallet-card h3{font-size:18px;margin:3px 0 2px;color:#17334d;overflow-wrap:anywhere}
+.zwallet-status{font-size:10px;font-weight:800;border-radius:999px;padding:5px 8px;flex:0 0 auto;background:#e7f4ec;color:#1b744f}
+.zwallet-status.attention{background:#fff0d4;color:#8c5a08}
+.zwallet-status.inactive{background:#e9edf2;color:#637180}
+.zwallet-balance{display:grid;gap:5px;padding:11px 12px;border-radius:9px;background:#eef5fb}
+.zwallet-balance span{font-size:11px;font-weight:750;color:#52708b}
+.zwallet-balance strong{font-size:22px;color:#174a76;overflow-wrap:anywhere}
+.zwallet-meta{display:flex;flex-wrap:wrap;gap:7px 12px;font-size:11px;color:#687b8d}
+.zwallet-warning{font-size:11px;line-height:1.55;padding:10px;border-radius:8px;border:1px solid #f0d9a8;background:#fffaf1;color:#795115}
+.zwallet-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:auto}
+.zwallet-actions .btn{min-height:38px;font-size:11px}
+.zwallet-form-tip{align-self:end;border:1px solid #dce7f0;border-radius:9px;padding:10px 11px;background:#f8fbfe;display:grid;gap:4px}
+.zwallet-form-tip strong{font-size:12px;color:#34546f}
+.zwallet-form-tip span{font-size:11px;line-height:1.45;color:#6e7e8e}
+@media(max-width:950px){
+  .zwallet-summary{grid-template-columns:1fr 1fr}
+  .zwallet-grid{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+  .zwallet-summary{grid-template-columns:1fr}
+  .zwallet-toolbar{grid-template-columns:1fr}
+  .zwallet-card{padding:11px}
+  .zwallet-card h3{font-size:16px}
+  .zwallet-balance strong{font-size:20px}
+  .zwallet-actions{display:grid;grid-template-columns:1fr 1fr}
+  .zwallet-actions .btn-primary{grid-column:1/-1}
+}
