@@ -6,7 +6,7 @@
 .fin-cal-day{border-color:#D9E3EE}
 .fin-cal-day.has-items:hover{background:#FFF8F2}
 .fin-cal-day.today{box-shadow:inset 0 0 0 3px #245A8D;background:#F4F8FC}
-.fin-cal-today-label{background:#F58220;color:#fff}
+.fin-cal-today-label{background:#FF6A00;color:#fff}
 .fin-cal-total{color:#17365D}
 .today-dot{background:#245A8D}
-.pending-dot{background:#F58220}
+.pending-dot{background:#FF6A00}
