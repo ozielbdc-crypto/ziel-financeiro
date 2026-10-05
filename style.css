@@ -350,3 +350,111 @@ body.menu-open{overflow:hidden}
   .zwallet-actions{display:grid;grid-template-columns:1fr 1fr}
   .zwallet-actions .btn-primary{grid-column:1/-1}
 }
+
+
+/* ===== Identidade ZIEL — Azul + Laranja ===== */
+:root{
+  --navy:#102B47;
+  --navy2:#17365D;
+  --blue:#245A8D;
+  --orange:#F58220;
+  --orange-dark:#D9690C;
+  --orange-soft:#FFF1E5;
+  --bg:#F7F9FC;
+  --card:#FFFFFF;
+  --text:#1C2B39;
+  --muted:#6D7B8C;
+  --line:#D9E3EE;
+  --amber:#F58220;
+  --shadow:0 8px 28px rgba(16,43,71,.08);
+}
+
+body{background:var(--bg)}
+::selection{background:rgba(245,130,32,.22);color:var(--text)}
+
+.auth-shell{background:linear-gradient(135deg,#102B47 0%,#17365D 58%,#245A8D 100%)}
+.auth-card{border-top:4px solid var(--orange)}
+.auth-links button{color:var(--blue)}
+
+.input:focus,select:focus,textarea:focus{
+  border-color:var(--orange);
+  box-shadow:0 0 0 3px rgba(245,130,32,.14)
+}
+
+.btn{transition:background .16s ease,transform .16s ease,box-shadow .16s ease}
+.btn-primary{
+  background:linear-gradient(180deg,#F68A2B 0%,var(--orange) 100%);
+  color:#fff;
+  box-shadow:0 4px 12px rgba(245,130,32,.18)
+}
+.btn-primary:hover:not(:disabled){background:var(--orange-dark);box-shadow:0 5px 14px rgba(217,105,12,.22)}
+.btn-primary:active:not(:disabled){transform:translateY(1px)}
+.btn-soft{background:#EDF3F8;color:#244763}
+.btn-soft:hover:not(:disabled){background:#E3EDF5}
+
+.sidebar{background:linear-gradient(180deg,#102B47 0%,#17365D 100%)}
+.nav button{position:relative}
+.nav button.active,.nav button:hover{
+  background:linear-gradient(90deg,#245A8D 0%,#1D4F7D 100%);
+  color:#fff
+}
+.nav button.active{box-shadow:inset 4px 0 0 var(--orange)}
+.nav button.active::after{
+  content:"";
+  position:absolute;
+  right:12px;
+  top:50%;
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:var(--orange);
+  transform:translateY(-50%)
+}
+.brand{border-bottom-color:rgba(245,130,32,.28)}
+.brand small{color:#C7D8E8}
+
+.topbar{border-bottom-color:#DDE6EF}
+.avatar{background:var(--orange-soft);color:var(--orange-dark)}
+.title-row h1,.section-head h3{color:var(--navy2)}
+
+.card{border-color:#E1E8F0}
+.kpi{position:relative;overflow:hidden}
+.kpi::before{
+  content:"";
+  position:absolute;
+  left:0;right:0;top:0;
+  height:3px;
+  background:linear-gradient(90deg,var(--blue),var(--orange))
+}
+.table th{background:#EEF4FA;color:#27415A;border-bottom-color:#D8E3ED}
+.wallet{border-left-color:var(--orange)}
+.badge.blue{background:#E8F1FA;color:#245A8D}
+.a{color:var(--orange-dark)}
+
+.transfer-preview{border-color:#D7E4EF;background:#F7FAFD}
+.transfer-flow-arrow{background:var(--orange-soft);color:var(--orange-dark)}
+.transfer-stat{border-top:3px solid var(--blue)}
+.transfer-stat:nth-child(2){border-top-color:var(--orange)}
+.transfer-entry{border-left:3px solid #D8E4EF}
+.transfer-entry:hover{border-left-color:var(--orange)}
+.transfer-kind{background:#EAF2F9;color:#315A7F}
+
+.zbal-topstat{border-top:3px solid var(--blue)}
+.zbal-topstat:nth-child(2),.zbal-topstat:nth-child(4){border-top-color:var(--orange)}
+.zbal-notice{border-left:4px solid var(--orange)}
+.zbal-wallet-current{background:#EEF5FB;border-left:3px solid var(--orange)}
+.zbal-check-system{border-left:4px solid var(--orange)}
+
+.zwallet-summary>div{border-top:3px solid var(--blue)}
+.zwallet-summary>div:nth-child(2){border-top-color:var(--orange)}
+.zwallet-rule{border-left:4px solid var(--orange)}
+.zwallet-card:not(.is-generic){border-top:3px solid #DCE7F1}
+.zwallet-card:not(.is-generic):hover{border-top-color:var(--blue)}
+.zwallet-balance{border-left:3px solid var(--orange)}
+.zwallet-status.attention{background:var(--orange-soft);color:#8A4B08}
+.zwallet-guide{border-left:4px solid var(--orange)}
+
+@media(max-width:900px){
+  .menu-toggle{color:var(--navy2)}
+  .sidebar{background:linear-gradient(180deg,#102B47 0%,#17365D 100%)}
+}
