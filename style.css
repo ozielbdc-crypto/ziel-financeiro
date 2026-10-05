@@ -357,9 +357,9 @@ body.menu-open{overflow:hidden}
   --navy:#102B47;
   --navy2:#17365D;
   --blue:#245A8D;
-  --orange:#F58220;
-  --orange-dark:#D9690C;
-  --orange-soft:#FFF1E5;
+  --orange:#FF6A00;
+  --orange-dark:#D94F00;
+  --orange-soft:#FFF0E6;
   --bg:#F7F9FC;
   --card:#FFFFFF;
   --text:#1C2B39;
@@ -370,7 +370,7 @@ body.menu-open{overflow:hidden}
 }
 
 body{background:var(--bg)}
-::selection{background:rgba(245,130,32,.22);color:var(--text)}
+::selection{background:rgba(255,106,0,.24);color:var(--text)}
 
 .auth-shell{background:linear-gradient(135deg,#102B47 0%,#17365D 58%,#245A8D 100%)}
 .auth-card{border-top:4px solid var(--orange)}
@@ -383,11 +383,11 @@ body{background:var(--bg)}
 
 .btn{transition:background .16s ease,transform .16s ease,box-shadow .16s ease}
 .btn-primary{
-  background:linear-gradient(180deg,#F68A2B 0%,var(--orange) 100%);
+  background:linear-gradient(180deg,#FF7A14 0%,var(--orange) 100%);
   color:#fff;
-  box-shadow:0 4px 12px rgba(245,130,32,.18)
+  box-shadow:0 5px 14px rgba(255,106,0,.24)
 }
-.btn-primary:hover:not(:disabled){background:var(--orange-dark);box-shadow:0 5px 14px rgba(217,105,12,.22)}
+.btn-primary:hover:not(:disabled){background:var(--orange-dark);box-shadow:0 6px 16px rgba(217,79,0,.28)}
 .btn-primary:active:not(:disabled){transform:translateY(1px)}
 .btn-soft{background:#EDF3F8;color:#244763}
 .btn-soft:hover:not(:disabled){background:#E3EDF5}
@@ -410,7 +410,7 @@ body{background:var(--bg)}
   background:var(--orange);
   transform:translateY(-50%)
 }
-.brand{border-bottom-color:rgba(245,130,32,.28)}
+.brand{border-bottom-color:rgba(255,106,0,.38)}
 .brand small{color:#C7D8E8}
 
 .topbar{border-bottom-color:#DDE6EF}
@@ -458,3 +458,14 @@ body{background:var(--bg)}
   .menu-toggle{color:var(--navy2)}
   .sidebar{background:linear-gradient(180deg,#102B47 0%,#17365D 100%)}
 }
+
+
+/* Reforço do laranja de identidade */
+.btn-primary{font-weight:800}
+.nav button.active{box-shadow:inset 5px 0 0 var(--orange)}
+.nav button.active::after{width:7px;height:7px;box-shadow:0 0 0 3px rgba(255,106,0,.16)}
+.kpi::before{height:4px;background:linear-gradient(90deg,var(--blue) 0 62%,var(--orange) 62% 100%)}
+.wallet{border-left-width:5px}
+.zbal-notice,.zwallet-rule,.zwallet-guide{border-left-width:5px}
+.zbal-wallet-current,.zwallet-balance{border-left-width:4px}
+.transfer-flow-arrow{box-shadow:0 0 0 3px rgba(255,106,0,.10)}
