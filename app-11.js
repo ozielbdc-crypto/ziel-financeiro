@@ -27,7 +27,7 @@ function zielPaintMainDashboardKpis(){
   if(!box) return;
   const period=state.dashboardPeriod||'month';
   const range=zielDashboardPeriodRange(period);
-  const txBase=filtered(state.transactions).filter(t=>t.source_type!=='transfer');
+  const txBase=filtered(state.transactions).filter(t=>!['transfer','balance_adjustment'].includes(t.source_type));
   const tx=txBase.filter(t=>zielInPeriod(t.transaction_date,range.start,range.end));
   const pay=filtered(state.payables).filter(p=>p.status==='Pendente'&&zielInPeriod(p.due_date,range.start,range.end));
   const rec=filtered(state.receivables).filter(r=>r.status==='Pendente'&&zielInPeriod(r.due_date,range.start,range.end));
