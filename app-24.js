@@ -7,6 +7,9 @@ let zielIntegrationRenderSeq=0;
 function zielIntegrationProviderLabel(provider){
   return {
     mercado_pago:'Mercado Pago',
+    asaas:'Asaas',
+    efi:'Efí',
+    lytex:'Lytex',
     sgp:'SGP',
     outro:'Outro / API'
   }[provider]||provider||'Integração';
@@ -15,6 +18,9 @@ function zielIntegrationProviderLabel(provider){
 function zielIntegrationSuggestedProvider(wallet){
   const name=String(wallet?.name||'').toLocaleLowerCase('pt-BR');
   if(name.includes('mercado pago')||name.includes('mecado pago'))return 'mercado_pago';
+  if(name.includes('asaas'))return 'asaas';
+  if(name.includes('efi')||name.includes('efí')||name.includes('gerencianet'))return 'efi';
+  if(name.includes('lytex'))return 'lytex';
   if(name.includes('sgp'))return 'sgp';
   return 'mercado_pago';
 }
@@ -36,7 +42,7 @@ function zielIntegrationRow(wallet,integration){
   const label=zielIntegrationProviderLabel(integration.provider);
   return `<div class="zint-provider ${integration.enabled===false?'is-disabled':''}">
     <div class="zint-provider-main">
-      <span class="zint-provider-icon">${integration.provider==='mercado_pago'?'MP':integration.provider==='sgp'?'SGP':'API'}</span>
+      <span class="zint-provider-icon">${integration.provider==='mercado_pago'?'MP':integration.provider==='asaas'?'AS':integration.provider==='efi'?'EFÍ':integration.provider==='lytex'?'LY':integration.provider==='sgp'?'SGP':'API'}</span>
       <div>
         <strong>${esc(label)}</strong>
         <span>${integration.enabled===false?'Token pausado':'Token configurado'} · atualizado em ${esc(zielIntegrationStamp(integration.updated_at))}</span>
@@ -93,12 +99,16 @@ function zielOpenTokenModal(walletId,provider=''){
       </div>
 
       <div class="field">
-        <label for="zintProvider">Integração</label>
+        <label for="zintProvider">Instituição / provedor</label>
         <select id="zintProvider" ${existing?'disabled':''}>
           <option value="mercado_pago" ${selected==='mercado_pago'?'selected':''}>Mercado Pago</option>
+          <option value="asaas" ${selected==='asaas'?'selected':''}>Asaas</option>
+          <option value="efi" ${selected==='efi'?'selected':''}>Efí</option>
+          <option value="lytex" ${selected==='lytex'?'selected':''}>Lytex</option>
           <option value="sgp" ${selected==='sgp'?'selected':''}>SGP</option>
           <option value="outro" ${selected==='outro'?'selected':''}>Outro / API</option>
         </select>
+        <div class="mini">Informe quem emitiu a credencial. Cada provedor usa endpoints e autenticação próprios.</div>
       </div>
 
       <div class="field">
@@ -118,7 +128,13 @@ function zielOpenTokenModal(walletId,provider=''){
       <div class="zint-warning">
         ${selected==='mercado_pago'
           ?'<strong>Mercado Pago:</strong> use o <b>Access Token de produção</b> da conta correspondente a esta carteira.'
-          :'<strong>Atenção:</strong> confirme que a credencial pertence exatamente à conta representada por esta carteira.'}
+          :selected==='asaas'
+            ?'<strong>Asaas:</strong> use a credencial da conta Asaas correspondente a esta carteira.'
+            :selected==='efi'
+              ?'<strong>Efí:</strong> use a credencial da conta Efí correspondente a esta carteira.'
+              :selected==='lytex'
+                ?'<strong>Lytex:</strong> use a credencial da conta Lytex correspondente a esta carteira.'
+                :'<strong>Atenção:</strong> confirme que a credencial pertence exatamente à conta representada por esta carteira.'}
       </div>
 
       <div class="actions">
@@ -258,7 +274,7 @@ function zielPaintIntegrations(){
 async function renderWalletIntegrations(seq=zielIntegrationRenderSeq){
   $('content').innerHTML=setTitle(
     'Integrações / Tokens',
-    'Credenciais privadas vinculadas individualmente a cada carteira'
+    'Tokens vinculados por carteira e por instituição / provedor'
   )+`
     <div class="zint-page">
       <div class="zint-hero">
