@@ -882,3 +882,16 @@ input[type="number"]::-webkit-inner-spin-button{
   .zin-query-summary{grid-template-columns:1fr}
   .zin-range{grid-template-columns:1fr}
 }
+
+
+/* Atalhos da consulta de entradas */
+.zin-query-shortcuts{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:10px
+}
+.zin-query-shortcuts .btn{
+  min-height:36px;
+  font-size:11px
+}
