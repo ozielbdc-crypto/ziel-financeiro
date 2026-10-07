@@ -80,13 +80,16 @@ function zielIncomingCard(row){
   const net=Number(row.net_amount??gross);
   const fee=Number(row.fee_amount??Math.max(0,gross-net));
   const isTransfer=row.movement_kind==='transfer';
+  const directionKnown=!isTransfer||row.direction==='Entrada'||row.direction==='Saída';
   const isCard=!isTransfer&&['credit_card','debit_card','prepaid_card'].includes(String(row.payment_type_id||'').toLowerCase());
   const released=row.available_for_balance!==false;
   let actions='';
 
   if(row.decision_status==='Pendente'){
     if(isTransfer){
-      actions=`<button type="button" class="btn btn-primary" data-zin-confirm="${esc(row.id)}">Classificar transferência</button>`;
+      actions=directionKnown
+        ?`<button type="button" class="btn btn-primary" data-zin-confirm="${esc(row.id)}">Classificar transferência</button>`
+        :`<button type="button" class="btn btn-soft" disabled>Aguardando direção</button>`;
     }else{
       actions=released
         ?`<button type="button" class="btn btn-primary" data-zin-confirm="${esc(row.id)}">Lançar entrada</button>
@@ -100,9 +103,14 @@ function zielIncomingCard(row){
     actions=`<button type="button" class="btn btn-soft" data-zin-tx="${esc(row.transaction_id||'')}">Ver em Lançamentos</button>`;
   }
 
-  const amountText=(isTransfer?(row.direction==='Saída'?'− ':'+ '):'')+fmt(gross);
+  const amountPrefix=isTransfer?(row.direction==='Saída'?'− ':row.direction==='Entrada'?'+ ':'↕ '):'';
+  const amountText=amountPrefix+fmt(gross);
   const kindLabel=isTransfer
-    ?(row.direction==='Saída'?'Transferência enviada / retirada':'Transferência recebida')
+    ?(row.direction==='Saída'
+      ?'Transferência enviada / retirada'
+      :row.direction==='Entrada'
+        ?'Transferência recebida'
+        :'Transferência — direção a confirmar')
     :'Pagamento';
 
   return `<article class="zin-card ${!released?'zin-card-waiting':''} ${isTransfer?'zin-card-transfer':''}">
@@ -116,7 +124,7 @@ function zielIncomingCard(row){
         <span class="mini">${esc(businessName(row.business_id))} · ${esc(wallet?.name||'Carteira')}</span>
       </div>
       <div class="zin-amount-block">
-        <strong class="zin-amount ${isTransfer?(row.direction==='Saída'?'r':'g'):''}">${amountText}</strong>
+        <strong class="zin-amount ${isTransfer?(row.direction==='Saída'?'r':row.direction==='Entrada'?'g':'a'):''}">${amountText}</strong>
         ${!isTransfer&&fee>0.009?`<small>Líquido ${fmt(net)}</small>`:''}
       </div>
     </div>
@@ -134,7 +142,9 @@ function zielIncomingCard(row){
 
     ${!released&&!isTransfer?`<div class="zin-release-warning"><strong>Pagamento aprovado, mas ainda não disponível na carteira.</strong><span>O ZIEL não permite lançar esse valor no saldo até a liberação do Mercado Pago. Consulte novamente depois.</span></div>`:''}
 
-    ${isTransfer?`<div class="zin-transfer-note"><strong>Transferência:</strong><span>classifique se o dinheiro foi movimentado <b>entre suas próprias carteiras</b> ou se foi uma ${row.direction==='Saída'?'<b>saída externa</b>':'<b>entrada externa</b>'}. Transferências internas não alteram o resultado do negócio.</span></div>`:''}
+    ${isTransfer?`<div class="zin-transfer-note ${!directionKnown?'pending-direction':''}"><strong>Transferência:</strong><span>${directionKnown
+      ?`classifique se o dinheiro foi movimentado <b>entre suas próprias carteiras</b> ou se foi uma ${row.direction==='Saída'?'<b>saída externa</b>':'<b>entrada externa</b>'}. Transferências internas não alteram o resultado do negócio.`
+      :'<b>direção ainda não confirmada pelo provedor.</b> O ZIEL não presume entrada ou saída. Consulte novamente o mesmo período para o relatório de saldo identificar o impacto real antes de lançar.'}</span></div>`:''}
 
     <div class="zin-foot">
       <div>${zielIncomingStatusBadge(row.decision_status)}</div>
@@ -149,6 +159,10 @@ function zielIncomingOpenTransferConfirm(id){
 
   const wallet=state.wallets.find(w=>w.id===row.wallet_id);
   if(!wallet)return toast('Carteira vinculada não encontrada.','error');
+
+  if(row.direction!=='Entrada'&&row.direction!=='Saída'){
+    return toast('A direção desta transferência ainda não foi confirmada pelo Mercado Pago. Consulte novamente o mesmo período antes de lançar.','error');
+  }
 
   const incoming=row.direction==='Entrada';
   const amount=Number(row.amount||0);
@@ -494,9 +508,9 @@ function zielPaintQueryResult(){
   host.innerHTML=`<div class="zin-query-summary">
     <div><small>Período consultado</small><strong>${esc(br(q.date_from))}${q.date_from!==q.date_to?' até '+esc(br(q.date_to)):''}</strong></div>
     <div><small>Entradas localizadas</small><strong>${Number(q.payments_found||0)}</strong></div>
-    <div><small>Novas entradas</small><strong class="g">${Number(q.new_entries||0)}</strong></div>
+    <div><small>Novos movimentos</small><strong class="g">${Number(q.new_entries||0)}</strong></div>
     <div><small>Já existentes / atualizadas</small><strong>${Number(q.updated_entries??q.already_existing??0)}</strong></div>
-    <div><small>Transferências localizadas</small><strong>${Number(q.transfers_found||0)}</strong><span class="mini">${Number(q.incoming_transfers_found||0)} recebida(s) · ${Number(q.outgoing_transfers_found||0)} enviada(s)</span></div>
+    <div><small>Transferências localizadas</small><strong>${Number(q.transfers_found||0)}</strong><span class="mini">${Number(q.incoming_transfers_found||0)} recebida(s) · ${Number(q.outgoing_transfers_found||0)} enviada(s) · ${Number(q.ambiguous_transfers_found||0)} a confirmar</span></div>
     <div><small>Novas transferências</small><strong class="g">${Number(q.transfers_new||0)}</strong></div>
     <div><small>Aguardando liberação</small><strong class="a">${Number(q.awaiting_release||0)}</strong></div>
   </div>
@@ -506,7 +520,7 @@ function zielPaintQueryResult(){
   </div>
   ${q.transfers_pending?'<div class="message"><b>Transferências:</b> o relatório ainda está sendo gerado pelo Mercado Pago. Consulte o mesmo período novamente em alguns instantes.</div>':''}
   ${q.transfer_warning?'<div class="message"><b>Transferências:</b> '+esc(q.transfer_warning)+'</div>':''}
-  <p class="mini">A consulta traz <b>recebimentos aprovados</b>, <b>transferências recebidas</b> e <b>transferências/retiradas enviadas</b>. Reconsultar o mesmo período atualiza os mesmos IDs, sem duplicar.</p>`;
+  <p class="mini">A consulta traz <b>recebimentos aprovados</b> e transferências. Quando a Payments API não informa a direção com segurança, o movimento fica <b>“a confirmar”</b> e não pode ser lançado até o relatório de saldo identificar entrada ou saída. Reconsultar o mesmo período atualiza os mesmos IDs, sem duplicar.</p>`;
 
   const showAll=$('zinShowAllQuery');
   if(showAll)showAll.onclick=()=>{
