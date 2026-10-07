@@ -4,3 +4,36 @@
 .zin-query-action .btn{min-width:210px;min-height:42px}
 @media(max-width:1050px){.zin-query-grid{grid-template-columns:1fr 160px 1fr}.zin-query-action{grid-column:1/-1}}
 @media(max-width:700px){.zin-query-grid{grid-template-columns:1fr}.zin-range{grid-column:auto}.zin-query-action{grid-column:auto}.zin-query-action .btn{width:100%;min-width:0}}
+
+
+/* Cartões: liquidação, taxas e liberação */
+.zin-card-waiting{border-left-color:var(--amber);background:#fffdfa}
+.zin-amount-block{display:grid;gap:2px;text-align:right;flex:0 0 auto}
+.zin-amount-block small{font-size:10px;color:var(--muted);font-weight:700}
+.zin-release-warning{
+  display:grid;gap:4px;padding:10px 11px;border:1px solid #f0d7bd;border-left:4px solid var(--amber);
+  border-radius:8px;background:#fff8f1;color:#76502c
+}
+.zin-release-warning strong{font-size:11px}
+.zin-release-warning span{font-size:10px;line-height:1.45}
+.zin-settlement-summary{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;
+  padding:11px;border:1px solid #dce7f0;border-radius:10px;background:#f8fbfe
+}
+.zin-settlement-summary>div{display:grid;gap:4px;min-width:0}
+.zin-settlement-summary small{
+  font-size:9px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:var(--muted)
+}
+.zin-settlement-summary strong{font-size:12px;overflow-wrap:anywhere}
+.zin-query-summary{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media(max-width:900px){
+  .zin-settlement-summary{grid-template-columns:1fr 1fr}
+  .zin-query-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:600px){
+  .zin-amount-block{text-align:left}
+  .zin-settlement-summary{grid-template-columns:1fr}
+}
+@media(max-width:480px){
+  .zin-query-summary{grid-template-columns:1fr}
+}
