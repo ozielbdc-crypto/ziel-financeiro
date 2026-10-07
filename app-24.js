@@ -1,0 +1,333 @@
+// Integrações por carteira — tokens ficam criptografados no Supabase Vault.
+// O frontend recebe apenas metadados e nunca consegue reler o token salvo.
+
+let zielWalletIntegrations=[];
+let zielIntegrationRenderSeq=0;
+
+function zielIntegrationProviderLabel(provider){
+  return {
+    mercado_pago:'Mercado Pago',
+    sgp:'SGP',
+    outro:'Outro / API'
+  }[provider]||provider||'Integração';
+}
+
+function zielIntegrationSuggestedProvider(wallet){
+  const name=String(wallet?.name||'').toLocaleLowerCase('pt-BR');
+  if(name.includes('mercado pago')||name.includes('mecado pago'))return 'mercado_pago';
+  if(name.includes('sgp'))return 'sgp';
+  return 'mercado_pago';
+}
+
+function zielIntegrationStamp(value){
+  if(!value)return '—';
+  const d=new Date(value);
+  return Number.isNaN(d.getTime())?'—':d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+}
+
+async function zielLoadWalletIntegrations(){
+  const {data,error}=await supabase.rpc('list_wallet_integrations');
+  if(error)throw error;
+  zielWalletIntegrations=Array.isArray(data)?data:[];
+  return zielWalletIntegrations;
+}
+
+function zielIntegrationRow(wallet,integration){
+  const label=zielIntegrationProviderLabel(integration.provider);
+  return `<div class="zint-provider ${integration.enabled===false?'is-disabled':''}">
+    <div class="zint-provider-main">
+      <span class="zint-provider-icon">${integration.provider==='mercado_pago'?'MP':integration.provider==='sgp'?'SGP':'API'}</span>
+      <div>
+        <strong>${esc(label)}</strong>
+        <span>${integration.enabled===false?'Token pausado':'Token configurado'} · atualizado em ${esc(zielIntegrationStamp(integration.updated_at))}</span>
+      </div>
+    </div>
+    <div class="zint-provider-actions">
+      <button type="button" class="btn btn-soft" data-zint-edit="${esc(wallet.id)}" data-zint-provider="${esc(integration.provider)}">Atualizar token</button>
+      <button type="button" class="btn btn-soft" data-zint-toggle="${esc(wallet.id)}" data-zint-provider="${esc(integration.provider)}" data-zint-enabled="${integration.enabled!==false?'1':'0'}">${integration.enabled!==false?'Pausar':'Ativar'}</button>
+      <button type="button" class="btn btn-danger zint-remove" data-zint-remove="${esc(wallet.id)}" data-zint-provider="${esc(integration.provider)}">Remover</button>
+    </div>
+  </div>`;
+}
+
+function zielIntegrationWalletCard(wallet){
+  const integrations=zielWalletIntegrations.filter(i=>i.wallet_id===wallet.id);
+  const active=wallet.active!==false;
+  const current=typeof zielPositionSystemBalance==='function'?zielPositionSystemBalance(wallet):walletBalance(wallet);
+
+  return `<article class="zint-wallet-card ${active?'':'is-inactive'}">
+    <div class="zint-wallet-head">
+      <div>
+        <span class="zint-wallet-type">${esc(zielWalletTypeLabel?zielWalletTypeLabel(wallet.type):wallet.type||'Carteira')}</span>
+        <h3>${esc(wallet.name)}</h3>
+        <span class="mini">${esc(businessName(wallet.business_id))}</span>
+      </div>
+      <span class="zint-wallet-status ${active?'active':'inactive'}">${active?'Ativa':'Inativa'}</span>
+    </div>
+    <div class="zint-wallet-meta">
+      <span>Saldo registrado <strong class="${current<0?'r':''}">${fmt(current)}</strong></span>
+      <span>${integrations.length} integração${integrations.length===1?'':'ões'} configurada${integrations.length===1?'':'s'}</span>
+    </div>
+    <div class="zint-provider-list">
+      ${integrations.length?integrations.map(i=>zielIntegrationRow(wallet,i)).join(''):'<div class="zint-empty-token"><strong>Nenhum token configurado.</strong><span>O token será guardado de forma criptografada e não ficará visível no navegador.</span></div>'}
+    </div>
+    <div class="zint-wallet-actions">
+      <button type="button" class="btn btn-primary" data-zint-add="${esc(wallet.id)}">+ Configurar token</button>
+    </div>
+  </article>`;
+}
+
+function zielOpenTokenModal(walletId,provider=''){
+  const wallet=(state.wallets||[]).find(w=>w.id===walletId);
+  if(!wallet)return toast('Carteira não encontrada.','error');
+
+  const selected=provider||zielIntegrationSuggestedProvider(wallet);
+  const existing=provider?zielWalletIntegrations.find(i=>i.wallet_id===wallet.id&&i.provider===provider):null;
+
+  modal(existing?'Atualizar token da carteira':'Configurar token da carteira',`
+    <form id="zintTokenForm" class="zint-token-form">
+      <div class="zint-token-wallet">
+        <span>${esc(zielWalletTypeLabel?zielWalletTypeLabel(wallet.type):wallet.type||'Carteira')}</span>
+        <strong>${esc(wallet.name)}</strong>
+        <small>${esc(businessName(wallet.business_id))}</small>
+      </div>
+
+      <div class="field">
+        <label for="zintProvider">Integração</label>
+        <select id="zintProvider" ${existing?'disabled':''}>
+          <option value="mercado_pago" ${selected==='mercado_pago'?'selected':''}>Mercado Pago</option>
+          <option value="sgp" ${selected==='sgp'?'selected':''}>SGP</option>
+          <option value="outro" ${selected==='outro'?'selected':''}>Outro / API</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="zintToken">Token / chave privada</label>
+        <div class="zint-secret-input">
+          <input class="input" id="zintToken" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" placeholder="Cole o token aqui" required>
+          <button type="button" class="btn btn-soft" id="zintToggleSecret">Mostrar</button>
+        </div>
+        <div class="mini">O token precisa ter pelo menos 20 caracteres. Espaços no início ou no final serão removidos.</div>
+      </div>
+
+      <div class="zint-security">
+        <strong>🔒 Armazenamento protegido</strong>
+        <span>Depois de salvar, o ZIEL mostrará apenas que o token está configurado. O valor completo não será enviado de volta ao navegador nem exibido nesta página.</span>
+      </div>
+
+      <div class="zint-warning">
+        ${selected==='mercado_pago'
+          ?'<strong>Mercado Pago:</strong> use o <b>Access Token de produção</b> da conta correspondente a esta carteira.'
+          :'<strong>Atenção:</strong> confirme que a credencial pertence exatamente à conta representada por esta carteira.'}
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn btn-soft" id="zintCancel">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="zintSave">${existing?'Substituir token':'Salvar token'}</button>
+      </div>
+    </form>
+  `);
+
+  const token=$('zintToken');
+  $('zintToggleSecret').onclick=()=>{
+    const visible=token.type==='text';
+    token.type=visible?'password':'text';
+    $('zintToggleSecret').textContent=visible?'Mostrar':'Ocultar';
+    token.focus();
+  };
+  $('zintCancel').onclick=closeModal;
+
+  $('zintTokenForm').onsubmit=async e=>{
+    e.preventDefault();
+    const value=token.value.trim();
+    const providerValue=existing?existing.provider:$('zintProvider').value;
+
+    if(value.length<20)return toast('O token informado parece muito curto.','error');
+
+    const btn=$('zintSave');
+    btn.disabled=true;
+    btn.textContent='Salvando…';
+    try{
+      const {error}=await supabase.rpc('save_wallet_integration_token',{
+        p_wallet_id:wallet.id,
+        p_provider:providerValue,
+        p_token:value
+      });
+      if(error)throw error;
+      token.value='';
+      closeModal();
+      await zielLoadWalletIntegrations();
+      if(document.querySelector('.nav button.active')?.dataset.page==='integracoes')zielPaintIntegrations();
+      toast(existing?'Token substituído com segurança.':'Token configurado com segurança.');
+    }catch(error){
+      toast('Não foi possível salvar o token: '+(error?.message||'erro desconhecido'),'error');
+      if($('zintSave')){
+        $('zintSave').disabled=false;
+        $('zintSave').textContent=existing?'Substituir token':'Salvar token';
+      }
+    }
+  };
+
+  token.focus();
+}
+
+async function zielToggleIntegration(walletId,provider,isEnabled){
+  const action=isEnabled?'pausar':'ativar';
+  if(!confirm((isEnabled?'Pausar':'Ativar')+' a integração '+zielIntegrationProviderLabel(provider)+' nesta carteira?'))return;
+  try{
+    const {data,error}=await supabase.rpc('set_wallet_integration_enabled',{
+      p_wallet_id:walletId,
+      p_provider:provider,
+      p_enabled:!isEnabled
+    });
+    if(error)throw error;
+    if(!data)throw new Error('Integração não encontrada.');
+    await zielLoadWalletIntegrations();
+    zielPaintIntegrations();
+    toast('Integração '+(isEnabled?'pausada.':'ativada.'));
+  }catch(error){
+    toast('Não foi possível '+action+': '+(error?.message||'erro desconhecido'),'error');
+  }
+}
+
+async function zielRemoveIntegration(walletId,provider){
+  const wallet=(state.wallets||[]).find(w=>w.id===walletId);
+  if(!wallet)return;
+  if(!confirm('Remover definitivamente o token '+zielIntegrationProviderLabel(provider)+' de "'+wallet.name+'"? A credencial criptografada também será apagada.'))return;
+
+  try{
+    const {data,error}=await supabase.rpc('remove_wallet_integration_token',{
+      p_wallet_id:walletId,
+      p_provider:provider
+    });
+    if(error)throw error;
+    if(!data)throw new Error('Integração não encontrada.');
+    await zielLoadWalletIntegrations();
+    zielPaintIntegrations();
+    toast('Token removido com segurança.');
+  }catch(error){
+    toast('Não foi possível remover: '+(error?.message||'erro desconhecido'),'error');
+  }
+}
+
+function zielBindIntegrationActions(){
+  document.querySelectorAll('[data-zint-add]').forEach(btn=>btn.onclick=()=>zielOpenTokenModal(btn.dataset.zintAdd));
+  document.querySelectorAll('[data-zint-edit]').forEach(btn=>btn.onclick=()=>zielOpenTokenModal(btn.dataset.zintEdit,btn.dataset.zintProvider));
+  document.querySelectorAll('[data-zint-toggle]').forEach(btn=>btn.onclick=()=>zielToggleIntegration(btn.dataset.zintToggle,btn.dataset.zintProvider,btn.dataset.zintEnabled==='1'));
+  document.querySelectorAll('[data-zint-remove]').forEach(btn=>btn.onclick=()=>zielRemoveIntegration(btn.dataset.zintRemove,btn.dataset.zintProvider));
+}
+
+function zielPaintIntegrations(){
+  const host=$('zintWalletList');
+  if(!host)return;
+
+  const status=$('zintStatus')?.value||'active';
+  const q=String($('zintSearch')?.value||'').trim().toLocaleLowerCase('pt-BR');
+  const wallets=(state.wallets||[]).filter(w=>{
+    if(state.businessFilter&&w.business_id!==state.businessFilter)return false;
+    if(status==='active'&&w.active===false)return false;
+    if(status==='configured'&&!zielWalletIntegrations.some(i=>i.wallet_id===w.id))return false;
+    if(status==='unconfigured'&&zielWalletIntegrations.some(i=>i.wallet_id===w.id))return false;
+    if(q){
+      const hay=[w.name,w.type,businessName(w.business_id)].join(' ').toLocaleLowerCase('pt-BR');
+      if(!hay.includes(q))return false;
+    }
+    return true;
+  }).sort((a,b)=>{
+    if((a.active!==false)!==(b.active!==false))return a.active===false?1:-1;
+    const biz=businessName(a.business_id).localeCompare(businessName(b.business_id),'pt-BR');
+    return biz||a.name.localeCompare(b.name,'pt-BR');
+  });
+
+  const groups=[...new Set(wallets.map(w=>w.business_id))];
+  host.innerHTML=groups.map(businessId=>{
+    const rows=wallets.filter(w=>w.business_id===businessId);
+    const configured=rows.filter(w=>zielWalletIntegrations.some(i=>i.wallet_id===w.id)).length;
+    return `<section class="zint-business">
+      <div class="zint-business-head">
+        <div><h3>${esc(businessName(businessId))}</h3><span>${rows.length} carteira${rows.length===1?'':'s'}</span></div>
+        <span>${configured} com integração</span>
+      </div>
+      <div class="zint-wallet-grid">${rows.map(zielIntegrationWalletCard).join('')}</div>
+    </section>`;
+  }).join('')||'<div class="empty">Nenhuma carteira encontrada para este filtro.</div>';
+
+  zielBindIntegrationActions();
+}
+
+async function renderWalletIntegrations(seq=zielIntegrationRenderSeq){
+  $('content').innerHTML=setTitle(
+    'Integrações / Tokens',
+    'Credenciais privadas vinculadas individualmente a cada carteira'
+  )+`
+    <div class="zint-page">
+      <div class="zint-hero">
+        <div>
+          <span class="zint-lock">🔐</span>
+          <div><strong>Tokens protegidos no backend</strong><p>As credenciais ficam criptografadas no Supabase Vault. Depois de salvar, o navegador não recebe o token de volta.</p></div>
+        </div>
+        <div class="zint-hero-stat"><span>Integrações configuradas</span><strong id="zintCount">—</strong></div>
+      </div>
+
+      <div class="zint-toolbar">
+        <div class="field">
+          <label for="zintStatus">Exibir</label>
+          <select id="zintStatus">
+            <option value="active">Carteiras ativas</option>
+            <option value="all">Todas as carteiras</option>
+            <option value="configured">Com integração</option>
+            <option value="unconfigured">Sem integração</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="zintSearch">Buscar carteira</label>
+          <input class="input" id="zintSearch" type="search" placeholder="Carteira, tipo ou negócio">
+        </div>
+      </div>
+
+      <div id="zintWalletList"><div class="empty">Carregando integrações…</div></div>
+
+      <div class="zint-footnote">
+        <strong>Importante:</strong> esta página apenas guarda as credenciais. Nenhuma entrada será importada automaticamente até ativarmos o conector específico do provedor.
+      </div>
+    </div>`;
+
+  try{
+    await zielLoadWalletIntegrations();
+    if(seq!==zielIntegrationRenderSeq)return;
+    if($('zintCount'))$('zintCount').textContent=String(zielWalletIntegrations.filter(i=>i.enabled!==false).length);
+    $('zintStatus').onchange=zielPaintIntegrations;
+    $('zintSearch').oninput=zielPaintIntegrations;
+    zielPaintIntegrations();
+  }catch(error){
+    if(seq!==zielIntegrationRenderSeq)return;
+    const host=$('zintWalletList');
+    if(host)host.innerHTML='<div class="message error">Não foi possível carregar as integrações: '+esc(error?.message||'erro desconhecido')+'</div>';
+  }
+}
+
+const _zielIntegrationsPreviousRenderShell=renderShell;
+renderShell=function(){
+  _zielIntegrationsPreviousRenderShell();
+  const navEl=document.querySelector('.sidebar .nav');
+  if(navEl&&!navEl.querySelector('[data-page="integracoes"]')){
+    const btn=document.createElement('button');
+    btn.dataset.page='integracoes';
+    btn.textContent='🔐 Integrações / Tokens';
+    btn.onclick=()=>{showPage('integracoes');document.body.classList.remove('menu-open');};
+    const configBtn=navEl.querySelector('[data-page="cadastros"]');
+    navEl.insertBefore(btn,configBtn||null);
+  }
+};
+
+const _zielIntegrationsPreviousShowPage=showPage;
+showPage=function(page){
+  zielIntegrationRenderSeq++;
+  const seq=zielIntegrationRenderSeq;
+  if(page==='integracoes'){
+    activate(page);
+    renderWalletIntegrations(seq);
+    return;
+  }
+  return _zielIntegrationsPreviousShowPage(page);
+};
