@@ -50,25 +50,36 @@ function zielIncomingStatusBadge(status){
 function zielIncomingCard(row){
   const wallet=state.wallets.find(w=>w.id===row.wallet_id);
   const when=row.approved_at||row.occurred_at||row.imported_at;
+  const gross=Number(row.gross_amount??row.amount??0);
+  const net=Number(row.net_amount??gross);
+  const fee=Number(row.fee_amount??Math.max(0,gross-net));
+  const isCard=['credit_card','debit_card','prepaid_card'].includes(String(row.payment_type_id||'').toLowerCase());
+  const released=row.available_for_balance!==false;
   let actions='';
 
   if(row.decision_status==='Pendente'){
-    actions=`<button type="button" class="btn btn-primary" data-zin-confirm="${esc(row.id)}">Lançar entrada</button>
-      <button type="button" class="btn btn-soft" data-zin-ignore="${esc(row.id)}">Ignorar</button>`;
+    actions=released
+      ?`<button type="button" class="btn btn-primary" data-zin-confirm="${esc(row.id)}">Lançar entrada</button>
+        <button type="button" class="btn btn-soft" data-zin-ignore="${esc(row.id)}">Ignorar</button>`
+      :`<button type="button" class="btn btn-soft" disabled>Aguardando liberação</button>
+        <button type="button" class="btn btn-soft" data-zin-ignore="${esc(row.id)}">Ignorar</button>`;
   }else if(row.decision_status==='Ignorado'){
     actions=`<button type="button" class="btn btn-soft" data-zin-reopen="${esc(row.id)}">Voltar para pendente</button>`;
   }else{
     actions=`<button type="button" class="btn btn-soft" data-zin-tx="${esc(row.transaction_id||'')}">Ver em Lançamentos</button>`;
   }
 
-  return `<article class="zin-card">
+  return `<article class="zin-card ${!released?'zin-card-waiting':''}">
     <div class="zin-card-head">
       <div>
         <span class="zin-provider">${esc(zielIncomingProviderLabel(row.provider))}</span>
         <h3>${esc(row.description||'Entrada importada')}</h3>
         <span class="mini">${esc(businessName(row.business_id))} · ${esc(wallet?.name||'Carteira')}</span>
       </div>
-      <strong class="zin-amount">${fmt(row.amount)}</strong>
+      <div class="zin-amount-block">
+        <strong class="zin-amount">${fmt(gross)}</strong>
+        ${fee>0.009?`<small>Líquido ${fmt(net)}</small>`:''}
+      </div>
     </div>
 
     <div class="zin-meta">
@@ -76,7 +87,13 @@ function zielIncomingCard(row){
       <div><small>Status no provedor</small><strong>${esc(row.provider_status||'—')}</strong></div>
       <div><small>Método</small><strong>${esc(row.payment_method||'—')}</strong></div>
       <div><small>ID Mercado Pago</small><strong>${esc(row.external_id||'—')}</strong></div>
+      ${isCard?`<div><small>Parcelas</small><strong>${Number(row.installments||1)}x</strong></div>
+      <div><small>Taxas/deduções</small><strong>${fmt(fee)}</strong></div>
+      <div><small>Valor líquido</small><strong>${fmt(net)}</strong></div>
+      <div><small>Liberação</small><strong class="${released?'g':'a'}">${released?'Liberado':row.money_release_date?zielIncomingWhen(row.money_release_date):'Aguardando'}</strong></div>`:''}
     </div>
+
+    ${!released?`<div class="zin-release-warning"><strong>Pagamento aprovado, mas ainda não disponível na carteira.</strong><span>O ZIEL não permite lançar esse valor no saldo até a liberação do Mercado Pago. Consulte novamente depois.</span></div>`:''}
 
     <div class="zin-foot">
       <div>${zielIncomingStatusBadge(row.decision_status)}</div>
@@ -89,14 +106,30 @@ function zielIncomingOpenConfirm(id){
   const row=zielIncomingRows.find(x=>x.id===id);
   if(!row)return toast('Entrada importada não encontrada.','error');
 
+  if(row.available_for_balance===false){
+    return toast('Este pagamento ainda não foi liberado pelo Mercado Pago. Consulte novamente após a data de liberação.','error');
+  }
+
   const wallet=state.wallets.find(w=>w.id===row.wallet_id);
+  const gross=Number(row.gross_amount??row.amount??0);
+  const net=Number(row.net_amount??gross);
+  const fee=Number(row.fee_amount??Math.max(0,gross-net));
+  const isCard=['credit_card','debit_card','prepaid_card'].includes(String(row.payment_type_id||'').toLowerCase());
+  const releaseWhen=row.money_release_date||row.approved_at||row.occurred_at;
 
   modal('Lançar entrada no financeiro',`
     <form id="zinConfirmForm" class="zin-confirm-form">
       <div class="zin-confirm-summary">
-        <div><small>VALOR</small><strong>${fmt(row.amount)}</strong></div>
+        <div><small>VALOR BRUTO</small><strong>${fmt(gross)}</strong></div>
         <div><small>CARTEIRA</small><strong>${esc(wallet?.name||'Carteira')}</strong><span>${esc(businessName(row.business_id))}</span></div>
       </div>
+
+      ${isCard||fee>0.009?`<div class="zin-settlement-summary">
+        <div><small>Método</small><strong>${esc(row.payment_method||'Cartão')}</strong></div>
+        <div><small>Taxas/deduções</small><strong class="r">− ${fmt(fee)}</strong></div>
+        <div><small>Líquido na carteira</small><strong class="g">${fmt(net)}</strong></div>
+        <div><small>Data de liberação</small><strong>${esc(zielIncomingWhen(releaseWhen))}</strong></div>
+      </div>`:''}
 
       <div class="field">
         <label>Categoria</label>
@@ -109,8 +142,10 @@ function zielIncomingOpenConfirm(id){
       </div>
 
       <div class="zin-confirm-note">
-        O ZIEL criará uma <b>Entrada</b> nessa carteira usando a data de aprovação do Mercado Pago.
-        O ID externo <b>${esc(row.external_id||'—')}</b> fica vinculado ao registro e não poderá gerar um segundo lançamento.
+        ${fee>0.009
+          ?`O ZIEL criará uma <b>Entrada de ${fmt(gross)}</b> e uma <b>Saída de ${fmt(fee)}</b> em <b>Impostos/Taxas</b>. O efeito líquido na carteira será <b>${fmt(net)}</b>.`
+          :`O ZIEL criará uma <b>Entrada de ${fmt(gross)}</b> nessa carteira.`}
+        A data usada será a de liberação do dinheiro quando disponível. O ID externo <b>${esc(row.external_id||'—')}</b> impede lançamento duplicado.
       </div>
 
       <div class="actions">
@@ -147,7 +182,7 @@ function zielIncomingOpenConfirm(id){
       await loadAll();
       await zielLoadIncomingEntries();
       zielPaintIncoming();
-      toast('Entrada lançada no fluxo de Lançamentos.');
+      toast(fee>0.009?'Entrada e taxa lançadas no financeiro.':'Entrada lançada no fluxo de Lançamentos.');
     }catch(error){
       toast('Não foi possível lançar: '+(error?.message||'erro desconhecido'),'error');
       if($('zinConfirmButton')){
@@ -275,7 +310,7 @@ async function zielRunIncomingQuery(){
     zielPaintQueryResult();
     zielPaintIncoming();
 
-    toast('Consulta concluída: '+Number(data.new_entries||0)+' nova(s) entrada(s).');
+    toast('Consulta concluída: '+Number(data.new_entries||0)+' nova(s), '+Number(data.updated_entries||0)+' atualizada(s).');
   }catch(error){
     toast('Consulta falhou: '+(error?.message||'erro desconhecido'),'error');
   }finally{
@@ -300,9 +335,10 @@ function zielPaintQueryResult(){
     <div><small>Período consultado</small><strong>${esc(br(q.date_from))}${q.date_from!==q.date_to?' até '+esc(br(q.date_to)):''}</strong></div>
     <div><small>Pagamentos encontrados</small><strong>${Number(q.payments_found||0)}</strong></div>
     <div><small>Novas entradas</small><strong class="g">${Number(q.new_entries||0)}</strong></div>
-    <div><small>Já existentes</small><strong>${Number(q.already_existing||0)}</strong></div>
+    <div><small>Atualizadas / já existentes</small><strong>${Number(q.updated_entries??q.already_existing??0)}</strong></div>
+    <div><small>Aguardando liberação</small><strong class="a">${Number(q.awaiting_release||0)}</strong></div>
   </div>
-  <p class="mini">Os itens já existentes não foram duplicados. A lista abaixo fica limitada a este mesmo período, considerando a data de aprovação em <b>America/Fortaleza</b>. O financeiro só muda quando você clicar em <b>Lançar entrada</b>.</p>`;
+  <p class="mini">Consultar novamente o mesmo período <b>atualiza</b> informações como taxa, tipo do cartão e liberação, sem duplicar o ID do Mercado Pago. O financeiro só muda quando você clicar em <b>Lançar entrada</b>.</p>`;
 }
 
 function zielBindIncomingActions(){
@@ -452,7 +488,7 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
 
       <div class="zin-duplicate-note">
         <strong>Proteção contra duplicidade</strong>
-        <span>Cada pagamento é identificado pelo ID do Mercado Pago. Consultar novamente o mesmo dia ou período não cria outra entrada, e uma entrada confirmada não pode gerar um segundo lançamento financeiro.</span>
+        <span>Cada pagamento é identificado pelo ID do Mercado Pago. Consultar novamente o mesmo dia ou período atualiza os dados do mesmo ID, sem criar outra entrada. Para cartão, o lançamento só é permitido quando o dinheiro estiver liberado; se houver taxa, o ZIEL registra bruto e taxa separadamente para o saldo final ficar líquido.</span>
       </div>
     </div>`;
 
