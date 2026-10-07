@@ -392,6 +392,7 @@ async function zielLoadIncomingEntries(){
   let query=supabase
     .from('integration_incoming_entries')
     .select('*')
+    .eq('movement_kind','payment')
     .order('approved_at',{ascending:false,nullsFirst:false})
     .order('imported_at',{ascending:false})
     .limit(1000);
@@ -459,7 +460,7 @@ async function zielRunIncomingQuery(){
 
   const btn=$('zinQueryButton');
   btn.disabled=true;
-  btn.textContent='Consultando pagamentos e transferências…';
+  btn.textContent='Consultando entradas…';
 
   try{
     const {data,error}=await supabase.functions.invoke('wallet-integration-query',{
@@ -489,7 +490,7 @@ async function zielRunIncomingQuery(){
   }finally{
     if($('zinQueryButton')){
       $('zinQueryButton').disabled=false;
-      $('zinQueryButton').textContent='Consultar movimentos';
+      $('zinQueryButton').textContent='Consultar entradas';
     }
   }
 }
@@ -506,15 +507,13 @@ function zielPaintQueryResult(){
 
   host.innerHTML=`<div class="zin-query-summary">
     <div><small>Período consultado</small><strong>${esc(br(q.date_from))}${q.date_from!==q.date_to?' até '+esc(br(q.date_to)):''}</strong></div>
-    <div><small>Pagamentos</small><strong>${Number(q.payments_found||0)}</strong></div>
-    <div><small>Transferências</small><strong>${Number(q.transfers_found||0)}</strong></div>
-    <div><small>Novos movimentos</small><strong class="g">${Number(q.new_entries||0)}</strong></div>
-    <div><small>Já existentes / atualizados</small><strong>${Number(q.updated_entries??q.already_existing??0)}</strong></div>
+    <div><small>Entradas localizadas</small><strong>${Number(q.payments_found||0)}</strong></div>
+    <div><small>Novas entradas</small><strong class="g">${Number(q.new_entries||0)}</strong></div>
+    <div><small>Já existentes / atualizadas</small><strong>${Number(q.updated_entries??q.already_existing??0)}</strong></div>
+    <div><small>Transferências ignoradas</small><strong>${Number(q.skipped_non_receipts||0)}</strong></div>
     <div><small>Aguardando liberação</small><strong class="a">${Number(q.awaiting_release||0)}</strong></div>
   </div>
-  ${q.transfers_pending?'<div class="zin-report-pending"><strong>Transferências em processamento.</strong><span>O Mercado Pago está gerando o relatório da conta. Consulte o mesmo período novamente em alguns instantes; os pagamentos já foram consultados.</span></div>':''}
-  ${q.transfer_warning&&!q.transfers_pending?`<div class="zin-report-warning"><strong>Aviso sobre transferências:</strong><span>${esc(q.transfer_warning)}</span></div>`:''}
-  <p class="mini">Consultar novamente o mesmo período <b>atualiza</b> os mesmos IDs, sem duplicar. O financeiro só muda quando você confirmar cada pagamento ou transferência.</p>`;
+  <p class="mini">Esta consulta traz somente <b>recebimentos</b>. Transferências próprias e outras movimentações não entram na fila de receita. Consultar novamente o mesmo período <b>atualiza</b> os mesmos IDs, sem duplicar.</p>`;
 }
 
 function zielBindIncomingActions(){
@@ -579,8 +578,8 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
   const today=iso();
 
   $('content').innerHTML=setTitle(
-    'Movimentos importados',
-    'Consulta manual de pagamentos e transferências, com lançamento somente após sua confirmação'
+    'Entradas importadas',
+    'Consulta manual de recebimentos, com lançamento somente após sua confirmação'
   )+`
     <div class="zin-page">
       <section class="zin-query-card">
@@ -588,8 +587,8 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
           <div>
             <span class="zin-auto-icon">⌕</span>
             <div>
-              <strong>Consultar Mercado Pago</strong>
-              <p>Escolha uma carteira e consulte pagamentos recebidos e transferências somente quando desejar. Não há consulta automática.</p>
+              <strong>Consultar entradas do Mercado Pago</strong>
+              <p>Escolha a carteira e o dia ou período. O ZIEL busca somente recebimentos; transferências próprias ficam fora desta fila.</p>
             </div>
           </div>
           <span class="zin-manual-badge">MANUAL</span>
@@ -626,7 +625,7 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
           </div>
 
           <div class="zin-query-action">
-            <button type="button" class="btn btn-primary" id="zinQueryButton">Consultar movimentos</button>
+            <button type="button" class="btn btn-primary" id="zinQueryButton">Consultar entradas</button>
           </div>
         </div>
 
@@ -665,7 +664,7 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
 
       <div class="zin-duplicate-note">
         <strong>Proteção contra duplicidade</strong>
-        <span>Cada pagamento e transferência usa um identificador externo único do Mercado Pago. Reconsultar o mesmo período atualiza o movimento existente e o banco também bloqueia uma segunda confirmação do mesmo item. Transferências entre carteiras são registradas sem afetar o resultado; saídas reais do negócio usam a categoria escolhida.</span>
+        <span>Cada recebimento usa o ID externo do Mercado Pago. Reconsultar o mesmo período atualiza o registro existente e o banco bloqueia uma segunda confirmação do mesmo item. Transferências próprias não são tratadas como receita nesta tela.</span>
       </div>
     </div>`;
 
@@ -711,7 +710,7 @@ renderShell=function(){
   if(navEl&&!navEl.querySelector('[data-page="entradas-importadas"]')){
     const btn=document.createElement('button');
     btn.dataset.page='entradas-importadas';
-    btn.textContent='⇩ Movimentos importados';
+    btn.textContent='⇩ Entradas importadas';
     btn.onclick=()=>{showPage('entradas-importadas');document.body.classList.remove('menu-open');};
 
     const integrationsBtn=navEl.querySelector('[data-page="integracoes"]');
