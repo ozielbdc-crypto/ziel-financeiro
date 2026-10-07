@@ -25,6 +25,21 @@ function zielIntegrationSuggestedProvider(wallet){
   return 'mercado_pago';
 }
 
+function zielIntegrationProviderStatusLabel(status){
+  const s=String(status||'').trim().toLowerCase();
+  const map={
+    approved:'Aprovado',
+    pending:'Pendente',
+    in_process:'Em processamento',
+    rejected:'Rejeitado',
+    cancelled:'Cancelado',
+    canceled:'Cancelado',
+    refunded:'Reembolsado',
+    charged_back:'Estornado'
+  };
+  return map[s]||status||'—';
+}
+
 function zielIntegrationStamp(value){
   if(!value)return '—';
   const d=new Date(value);
@@ -249,7 +264,7 @@ async function zielTestIntegration(walletId,provider){
           <div class="section-head"><h3>Último pagamento localizado</h3></div>
           <div class="zint-test-grid">
             <div><small>Valor</small><strong>${fmt(Number(last.amount||0))}</strong></div>
-            <div><small>Status</small><strong>${esc(last.status||'—')}</strong></div>
+            <div><small>Status</small><strong>${esc(zielIntegrationProviderStatusLabel(last.status))}</strong></div>
             <div><small>ID Mercado Pago</small><strong>${esc(String(last.id||'—'))}</strong></div>
             <div><small>Data</small><strong>${last.date_created?esc(new Date(last.date_created).toLocaleString('pt-BR')):'—'}</strong></div>
           </div>
