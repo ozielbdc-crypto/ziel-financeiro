@@ -49,6 +49,9 @@ function zielIntegrationRow(wallet,integration){
       </div>
     </div>
     <div class="zint-provider-actions">
+      ${integration.provider==='mercado_pago'&&integration.enabled!==false
+        ?`<button type="button" class="btn btn-primary" data-zint-test="${esc(wallet.id)}" data-zint-provider="${esc(integration.provider)}">Testar conexão</button>`
+        :''}
       <button type="button" class="btn btn-soft" data-zint-edit="${esc(wallet.id)}" data-zint-provider="${esc(integration.provider)}">Atualizar token</button>
       <button type="button" class="btn btn-soft" data-zint-toggle="${esc(wallet.id)}" data-zint-provider="${esc(integration.provider)}" data-zint-enabled="${integration.enabled!==false?'1':'0'}">${integration.enabled!==false?'Pausar':'Ativar'}</button>
       <button type="button" class="btn btn-danger zint-remove" data-zint-remove="${esc(wallet.id)}" data-zint-provider="${esc(integration.provider)}">Remover</button>
@@ -187,6 +190,88 @@ function zielOpenTokenModal(walletId,provider=''){
   token.focus();
 }
 
+async function zielTestIntegration(walletId,provider){
+  const wallet=(state.wallets||[]).find(w=>w.id===walletId);
+  if(!wallet)return toast('Carteira não encontrada.','error');
+
+  if(provider!=='mercado_pago'){
+    return toast('O teste automático está disponível primeiro para Mercado Pago.','error');
+  }
+
+  const button=document.querySelector(`[data-zint-test="${CSS.escape(walletId)}"][data-zint-provider="${CSS.escape(provider)}"]`);
+  const original=button?.textContent||'Testar conexão';
+  if(button){
+    button.disabled=true;
+    button.textContent='Testando…';
+  }
+
+  try{
+    const {data,error}=await supabase.functions.invoke('wallet-integration-test',{
+      body:{wallet_id:walletId,provider}
+    });
+
+    if(error){
+      let message=error.message||'Falha ao testar integração.';
+      try{
+        const response=error.context;
+        if(response&&typeof response.clone==='function'){
+          const payload=await response.clone().json();
+          if(payload?.error)message=payload.error;
+        }
+      }catch(_){}
+      throw new Error(message);
+    }
+
+    if(!data?.ok)throw new Error(data?.error||'O Mercado Pago não confirmou a conexão.');
+
+    await zielLoadWalletIntegrations();
+
+    const last=data.last_payment;
+    modal('Teste de conexão — Mercado Pago',`
+      <div class="zint-test-result">
+        <div class="zint-test-success">
+          <span>✓</span>
+          <div><strong>Conexão realizada com sucesso</strong><p>O token desta carteira foi aceito pela API do Mercado Pago.</p></div>
+        </div>
+
+        <div class="zint-test-wallet">
+          <small>CARTEIRA</small>
+          <strong>${esc(wallet.name)}</strong>
+          <span>${esc(businessName(wallet.business_id))}</span>
+        </div>
+
+        <div class="zint-test-grid">
+          <div><small>Período consultado</small><strong>${Number(data.searched_period_days||30)} dias</strong></div>
+          <div><small>Pagamentos encontrados</small><strong>${Number(data.total_payments_found||0)}</strong></div>
+        </div>
+
+        ${last?`<div class="zint-test-payment">
+          <div class="section-head"><h3>Último pagamento localizado</h3></div>
+          <div class="zint-test-grid">
+            <div><small>Valor</small><strong>${fmt(Number(last.amount||0))}</strong></div>
+            <div><small>Status</small><strong>${esc(last.status||'—')}</strong></div>
+            <div><small>ID Mercado Pago</small><strong>${esc(String(last.id||'—'))}</strong></div>
+            <div><small>Data</small><strong>${last.date_created?esc(new Date(last.date_created).toLocaleString('pt-BR')):'—'}</strong></div>
+          </div>
+        </div>`:'<div class="zint-test-empty"><strong>Conexão OK.</strong><span>Nenhum pagamento foi localizado nos últimos 30 dias, mas o token foi autenticado corretamente.</span></div>'}
+
+        <p class="mini">Este teste somente consulta a API. Nenhum pagamento foi importado nem lançado no financeiro.</p>
+        <div class="actions"><button type="button" class="btn btn-primary" id="zintTestClose">Fechar</button></div>
+      </div>
+    `);
+    $('zintTestClose').onclick=closeModal;
+    toast('Mercado Pago conectado com sucesso.');
+  }catch(error){
+    toast('Teste falhou: '+(error?.message||'erro desconhecido'),'error');
+    await zielLoadWalletIntegrations().catch(()=>{});
+  }finally{
+    if(button&&document.body.contains(button)){
+      button.disabled=false;
+      button.textContent=original;
+    }
+  }
+}
+
 async function zielToggleIntegration(walletId,provider,isEnabled){
   const action=isEnabled?'pausar':'ativar';
   if(!confirm((isEnabled?'Pausar':'Ativar')+' a integração '+zielIntegrationProviderLabel(provider)+' nesta carteira?'))return;
@@ -228,6 +313,7 @@ async function zielRemoveIntegration(walletId,provider){
 
 function zielBindIntegrationActions(){
   document.querySelectorAll('[data-zint-add]').forEach(btn=>btn.onclick=()=>zielOpenTokenModal(btn.dataset.zintAdd));
+  document.querySelectorAll('[data-zint-test]').forEach(btn=>btn.onclick=()=>zielTestIntegration(btn.dataset.zintTest,btn.dataset.zintProvider));
   document.querySelectorAll('[data-zint-edit]').forEach(btn=>btn.onclick=()=>zielOpenTokenModal(btn.dataset.zintEdit,btn.dataset.zintProvider));
   document.querySelectorAll('[data-zint-toggle]').forEach(btn=>btn.onclick=()=>zielToggleIntegration(btn.dataset.zintToggle,btn.dataset.zintProvider,btn.dataset.zintEnabled==='1'));
   document.querySelectorAll('[data-zint-remove]').forEach(btn=>btn.onclick=()=>zielRemoveIntegration(btn.dataset.zintRemove,btn.dataset.zintProvider));
