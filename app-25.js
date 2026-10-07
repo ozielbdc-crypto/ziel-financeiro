@@ -504,7 +504,7 @@ async function zielRunIncomingQuery(){
     await zielLoadIncomingEntries();
 
     if($('zinWalletFilter'))$('zinWalletFilter').value=walletId;
-    if($('zinStatus'))$('zinStatus').value='Pendente';
+    if($('zinStatus'))$('zinStatus').value='Todos';
     if($('zinMovement'))$('zinMovement').value='Todos';
 
     zielPaintQueryResult();
@@ -540,9 +540,29 @@ function zielPaintQueryResult(){
     <div><small>Novas transferências</small><strong class="g">${Number(q.transfers_new||0)}</strong></div>
     <div><small>Aguardando liberação</small><strong class="a">${Number(q.awaiting_release||0)}</strong></div>
   </div>
+  <div class="zin-query-shortcuts">
+    <button type="button" class="btn btn-soft" id="zinShowAllQuery">Ver todos do período</button>
+    <button type="button" class="btn btn-soft" id="zinShowTransfersQuery">Ver transferências</button>
+  </div>
   ${q.transfers_pending?'<div class="message"><b>Transferências:</b> o relatório ainda está sendo gerado pelo Mercado Pago. Consulte o mesmo período novamente em alguns instantes.</div>':''}
   ${q.transfer_warning?'<div class="message"><b>Transferências:</b> '+esc(q.transfer_warning)+'</div>':''}
   <p class="mini">A consulta traz <b>recebimentos aprovados</b> e também <b>transferências/retiradas</b>. Transferências nunca são tratadas automaticamente como receita. Reconsultar o mesmo período <b>atualiza</b> os mesmos IDs, sem duplicar.</p>`;
+
+  const showAll=$('zinShowAllQuery');
+  if(showAll)showAll.onclick=()=>{
+    if($('zinWalletFilter'))$('zinWalletFilter').value=q.wallet_id||'';
+    if($('zinStatus'))$('zinStatus').value='Todos';
+    if($('zinMovement'))$('zinMovement').value='Todos';
+    zielPaintIncoming();
+  };
+
+  const showTransfers=$('zinShowTransfersQuery');
+  if(showTransfers)showTransfers.onclick=()=>{
+    if($('zinWalletFilter'))$('zinWalletFilter').value=q.wallet_id||'';
+    if($('zinStatus'))$('zinStatus').value='Todos';
+    if($('zinMovement'))$('zinMovement').value='Transferências';
+    zielPaintIncoming();
+  };
 }
 
 function zielBindIncomingActions(){
