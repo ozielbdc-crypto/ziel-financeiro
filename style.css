@@ -690,3 +690,41 @@ input[type="number"]::-webkit-inner-spin-button{
   .zint-secret-input{grid-template-columns:1fr}
   .zint-secret-input .btn{width:100%}
 }
+
+
+/* Resultado do teste de integração */
+.zint-test-result{display:grid;gap:14px}
+.zint-test-success{
+  display:flex;gap:11px;align-items:flex-start;padding:13px;border-radius:10px;
+  background:#eef8f2;border:1px solid #cfe7d8
+}
+.zint-test-success>span{
+  display:grid;place-items:center;width:34px;height:34px;border-radius:50%;
+  background:#dff3e7;color:#14734d;font-weight:900;flex:0 0 auto
+}
+.zint-test-success strong{color:#176844}
+.zint-test-success p{margin:3px 0 0;font-size:11px;color:#4f6d5b;line-height:1.45}
+.zint-test-wallet{
+  display:grid;gap:3px;padding:12px 13px;border:1px solid #dce7f0;border-radius:10px;background:#f8fbfe
+}
+.zint-test-wallet small,.zint-test-grid small{font-size:9px;font-weight:800;letter-spacing:.04em;color:var(--muted)}
+.zint-test-wallet strong{font-size:17px;color:var(--navy2)}
+.zint-test-wallet span{font-size:11px;color:var(--muted)}
+.zint-test-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.zint-test-grid>div{
+  display:grid;gap:4px;padding:10px;border-radius:9px;border:1px solid #e2e9f0;background:#fff
+}
+.zint-test-grid strong{font-size:14px;overflow-wrap:anywhere}
+.zint-test-payment{
+  display:grid;gap:10px;padding:12px;border-radius:10px;border:1px solid #dce5ee;background:#fcfdff
+}
+.zint-test-payment .section-head{margin:0}
+.zint-test-payment .section-head h3{font-size:14px}
+.zint-test-empty{
+  display:grid;gap:4px;padding:12px;border-radius:9px;border:1px solid #dce7f0;background:#f8fbfe
+}
+.zint-test-empty strong{color:var(--navy2);font-size:13px}
+.zint-test-empty span{font-size:11px;color:var(--muted);line-height:1.5}
+@media(max-width:600px){
+  .zint-test-grid{grid-template-columns:1fr}
+}
