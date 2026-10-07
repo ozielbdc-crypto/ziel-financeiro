@@ -15,6 +15,7 @@ class Query{
  constructor(table){this.table=table;this.method='GET';this.body=null;this.params=[];this.single=false}
  select(cols='*'){this.method='GET';this.params.push('select='+encodeURIComponent(cols));return this}
  order(col,opt={}){this.params.push('order='+encodeURIComponent(col+'.'+(opt.ascending===false?'desc':'asc')));return this}
+ limit(n){const v=Math.max(0,Math.floor(Number(n)||0));this.params.push('limit='+encodeURIComponent(v));return this}
  eq(col,val){this.params.push(encodeURIComponent(col)+'=eq.'+encodeURIComponent(val));return this}
  insert(row){this.method='POST';this.body=row;return this}
  update(row){this.method='PATCH';this.body=row;return this}
@@ -32,7 +33,21 @@ const client={
   onAuthStateChange(fn){listeners.push(fn);return {data:{subscription:{unsubscribe(){listeners=listeners.filter(x=>x!==fn)}}}}}
  },
  from(table){return new Query(table)},
- async rpc(name,args={}){const r=await fetch(BASE+'/rest/v1/rpc/'+name,{method:'POST',headers:await headers(),body:JSON.stringify(args||{})});return parse(r)}
+ async rpc(name,args={}){const r=await fetch(BASE+'/rest/v1/rpc/'+name,{method:'POST',headers:await headers(),body:JSON.stringify(args||{})});return parse(r)},
+ functions:{
+  async invoke(name,{body}={}){
+   try{
+    const r=await fetch(BASE+'/functions/v1/'+encodeURIComponent(name),{
+     method:'POST',
+     headers:await headers(),
+     body:JSON.stringify(body??{})
+    });
+    return parse(r);
+   }catch(e){
+    return {data:null,error:{message:e?.message||'Falha ao chamar função do backend'}};
+   }
+  }
+ }
 };
 window.supabase={createClient(){return client}};
 })();
