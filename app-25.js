@@ -19,7 +19,27 @@ function zielIncomingProviderLabel(provider){
 function zielIncomingWhen(value){
   if(!value)return '—';
   const d=new Date(value);
-  return Number.isNaN(d.getTime())?'—':d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+  return Number.isNaN(d.getTime())?'—':d.toLocaleString('pt-BR',{
+    timeZone:'America/Fortaleza',
+    dateStyle:'short',
+    timeStyle:'short'
+  });
+}
+
+function zielIncomingDateKey(value){
+  if(!value)return '';
+  const d=new Date(value);
+  if(Number.isNaN(d.getTime()))return '';
+  const parts=new Intl.DateTimeFormat('en-US',{
+    timeZone:'America/Fortaleza',
+    year:'numeric',
+    month:'2-digit',
+    day:'2-digit'
+  }).formatToParts(d);
+  const y=parts.find(p=>p.type==='year')?.value;
+  const m=parts.find(p=>p.type==='month')?.value;
+  const day=parts.find(p=>p.type==='day')?.value;
+  return y&&m&&day?`${y}-${m}-${day}`:'';
 }
 
 function zielIncomingStatusBadge(status){
@@ -282,7 +302,7 @@ function zielPaintQueryResult(){
     <div><small>Novas entradas</small><strong class="g">${Number(q.new_entries||0)}</strong></div>
     <div><small>Já existentes</small><strong>${Number(q.already_existing||0)}</strong></div>
   </div>
-  <p class="mini">Os itens já existentes não foram duplicados. A consulta apenas alimenta esta fila; o financeiro só muda quando você clicar em <b>Lançar entrada</b>.</p>`;
+  <p class="mini">Os itens já existentes não foram duplicados. A lista abaixo fica limitada a este mesmo período, considerando a data de aprovação em <b>America/Fortaleza</b>. O financeiro só muda quando você clicar em <b>Lançar entrada</b>.</p>`;
 }
 
 function zielBindIncomingActions(){
@@ -303,9 +323,18 @@ function zielPaintIncoming(){
   const walletFilter=$('zinWalletFilter')?.value||'';
   const q=String($('zinSearch')?.value||'').trim().toLocaleLowerCase('pt-BR');
 
+  const queryRange=zielIncomingLastQuery&&walletFilter===zielIncomingLastQuery.wallet_id
+    ?{from:zielIncomingLastQuery.date_from,to:zielIncomingLastQuery.date_to}
+    :null;
+
   const rows=zielIncomingRows.filter(row=>{
     if(status!=='Todos'&&row.decision_status!==status)return false;
     if(walletFilter&&row.wallet_id!==walletFilter)return false;
+
+    if(queryRange){
+      const key=zielIncomingDateKey(row.approved_at||row.occurred_at);
+      if(!key||key<queryRange.from||key>queryRange.to)return false;
+    }
 
     if(q){
       const wallet=state.wallets.find(w=>w.id===row.wallet_id);
