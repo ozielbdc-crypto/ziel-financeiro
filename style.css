@@ -728,3 +728,84 @@ input[type="number"]::-webkit-inner-spin-button{
 @media(max-width:600px){
   .zint-test-grid{grid-template-columns:1fr}
 }
+
+
+/* Entradas importadas — confirmação manual */
+.zin-page{display:grid;gap:16px;min-width:0}
+.zin-auto{
+  display:flex;justify-content:space-between;align-items:center;gap:14px;
+  padding:15px 16px;border:1px solid #d8e6f1;border-left:5px solid var(--orange);
+  border-radius:12px;background:#fff
+}
+.zin-auto>div:first-child{display:flex;gap:11px;align-items:flex-start;min-width:0}
+.zin-auto-icon{
+  display:grid;place-items:center;width:34px;height:34px;border-radius:50%;
+  background:var(--orange-soft);color:var(--orange-dark);font-size:18px;font-weight:900;flex:0 0 auto
+}
+.zin-auto strong{color:var(--navy2)}
+.zin-auto p{margin:3px 0 0;color:var(--muted);font-size:11px;line-height:1.5}
+.zin-auto-badge{
+  flex:0 0 auto;font-size:10px;font-weight:900;letter-spacing:.05em;
+  padding:6px 9px;border-radius:999px;background:#e8f4ec;color:#18704d
+}
+.zin-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.zin-stats>div{
+  display:grid;gap:5px;padding:14px;border:1px solid #dfe7ef;border-top:3px solid var(--blue);
+  border-radius:10px;background:#fff
+}
+.zin-stats>div:first-child{border-top-color:var(--orange)}
+.zin-stats span{font-size:11px;font-weight:800;color:var(--muted)}
+.zin-stats strong{font-size:22px;color:var(--navy2)}
+.zin-stats small{font-size:10px;color:var(--muted)}
+.zin-toolbar{display:grid;grid-template-columns:220px minmax(240px,1fr);gap:12px}
+.zin-toolbar .field{margin:0}
+#zinList{display:grid;gap:10px}
+.zin-card{
+  display:grid;gap:12px;padding:14px;background:#fff;border:1px solid #dfe7ef;
+  border-left:4px solid var(--blue);border-radius:11px;box-shadow:0 4px 14px rgba(16,43,71,.04)
+}
+.zin-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.zin-card-head>div{min-width:0}
+.zin-provider{
+  display:inline-block;font-size:9px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--orange-dark);margin-bottom:4px
+}
+.zin-card h3{margin:0 0 3px;font-size:16px;color:#17334d;overflow-wrap:anywhere}
+.zin-amount{font-size:21px;color:var(--navy2);white-space:nowrap}
+.zin-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.zin-meta>div{
+  display:grid;gap:4px;padding:9px 10px;border:1px solid #e6edf3;border-radius:8px;background:#fafcfe;min-width:0
+}
+.zin-meta small{font-size:9px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.zin-meta strong{font-size:11px;overflow-wrap:anywhere}
+.zin-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-top:9px;border-top:1px solid #edf1f5}
+.zin-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.zin-actions .btn{font-size:11px;min-height:36px}
+.zin-note{margin:0;line-height:1.55}
+.zin-confirm-form{display:grid;gap:14px}
+.zin-confirm-summary{
+  display:grid;grid-template-columns:1fr 1.5fr;gap:9px;padding:12px;border-radius:10px;
+  background:#f8fbfe;border:1px solid #dce7f0
+}
+.zin-confirm-summary>div{display:grid;gap:3px;min-width:0}
+.zin-confirm-summary small{font-size:9px;font-weight:800;letter-spacing:.04em;color:var(--muted)}
+.zin-confirm-summary strong{font-size:18px;color:var(--navy2);overflow-wrap:anywhere}
+.zin-confirm-summary span{font-size:11px;color:var(--muted)}
+.zin-confirm-note{
+  padding:10px 11px;border:1px solid #f0d7bd;border-left:4px solid var(--orange);
+  border-radius:8px;background:#fff8f2;font-size:11px;line-height:1.5;color:#6f4d2c
+}
+@media(max-width:760px){
+  .zin-meta{grid-template-columns:1fr 1fr}
+}
+@media(max-width:600px){
+  .zin-auto{align-items:flex-start;flex-direction:column}
+  .zin-stats{grid-template-columns:1fr}
+  .zin-toolbar{grid-template-columns:1fr}
+  .zin-card-head{flex-direction:column}
+  .zin-amount{font-size:19px}
+  .zin-foot{align-items:flex-start;flex-direction:column}
+  .zin-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}
+  .zin-actions .btn{width:100%}
+  .zin-confirm-summary{grid-template-columns:1fr}
+}
