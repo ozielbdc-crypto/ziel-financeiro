@@ -72,3 +72,15 @@
 @media(max-width:430px){
   .zin-query-summary{grid-template-columns:1fr}
 }
+
+
+/* Filtros de recebimentos e transferencias */
+.zin-toolbar-manual{
+  grid-template-columns:160px minmax(220px,1.2fr) 180px minmax(240px,1.3fr)
+}
+@media(max-width:1050px){
+  .zin-toolbar-manual{grid-template-columns:1fr 1fr}
+}
+@media(max-width:650px){
+  .zin-toolbar-manual{grid-template-columns:1fr}
+}
