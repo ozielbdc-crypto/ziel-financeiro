@@ -80,15 +80,13 @@ function zielIncomingCard(row){
   const net=Number(row.net_amount??gross);
   const fee=Number(row.fee_amount??Math.max(0,gross-net));
   const isTransfer=row.movement_kind==='transfer';
-  const isOut=isTransfer&&row.direction==='Saída';
   const isCard=!isTransfer&&['credit_card','debit_card','prepaid_card'].includes(String(row.payment_type_id||'').toLowerCase());
   const released=row.available_for_balance!==false;
   let actions='';
 
   if(row.decision_status==='Pendente'){
     if(isTransfer){
-      actions=`<button type="button" class="btn btn-primary" data-zin-confirm="${esc(row.id)}">${row.direction==='Entrada'?'Lançar retorno':'Lançar transferência'}</button>
-        <button type="button" class="btn btn-soft" data-zin-ignore="${esc(row.id)}">Ignorar</button>`;
+      actions=`<button type="button" class="btn btn-primary" data-zin-confirm="${esc(row.id)}">Lançar saída</button>`;
     }else{
       actions=released
         ?`<button type="button" class="btn btn-primary" data-zin-confirm="${esc(row.id)}">Lançar entrada</button>
@@ -97,13 +95,13 @@ function zielIncomingCard(row){
           <button type="button" class="btn btn-soft" data-zin-ignore="${esc(row.id)}">Ignorar</button>`;
     }
   }else if(row.decision_status==='Ignorado'){
-    actions=`<button type="button" class="btn btn-soft" data-zin-reopen="${esc(row.id)}">Voltar para pendente</button>`;
+    actions=isTransfer?'':`<button type="button" class="btn btn-soft" data-zin-reopen="${esc(row.id)}">Voltar para pendente</button>`;
   }else{
     actions=`<button type="button" class="btn btn-soft" data-zin-tx="${esc(row.transaction_id||'')}">Ver em Lançamentos</button>`;
   }
 
-  const amountText=(isOut?'− ':'')+fmt(gross);
-  const kindLabel=isTransfer?(row.direction==='Entrada'?'Retorno de transferência':'Transferência'):'Pagamento';
+  const amountText=(isTransfer?'− ':'')+fmt(gross);
+  const kindLabel=isTransfer?'Transferência / retirada':'Pagamento';
 
   return `<article class="zin-card ${!released?'zin-card-waiting':''} ${isTransfer?'zin-card-transfer':''}">
     <div class="zin-card-head">
@@ -116,7 +114,7 @@ function zielIncomingCard(row){
         <span class="mini">${esc(businessName(row.business_id))} · ${esc(wallet?.name||'Carteira')}</span>
       </div>
       <div class="zin-amount-block">
-        <strong class="zin-amount ${isOut?'r':isTransfer?'g':''}">${amountText}</strong>
+        <strong class="zin-amount ${isTransfer?'r':''}">${amountText}</strong>
         ${!isTransfer&&fee>0.009?`<small>Líquido ${fmt(net)}</small>`:''}
       </div>
     </div>
@@ -134,7 +132,7 @@ function zielIncomingCard(row){
 
     ${!released&&!isTransfer?`<div class="zin-release-warning"><strong>Pagamento aprovado, mas ainda não disponível na carteira.</strong><span>O ZIEL não permite lançar esse valor no saldo até a liberação do Mercado Pago. Consulte novamente depois.</span></div>`:''}
 
-    ${isTransfer&&isOut?`<div class="zin-transfer-note"><strong>Antes de lançar:</strong><span>informe se o dinheiro foi para outra carteira controlada no ZIEL ou se foi uma saída real do negócio.</span></div>`:''}
+    ${isTransfer?`<div class="zin-transfer-note"><strong>Transferência:</strong><span>ao confirmar, o ZIEL registrará este movimento como uma <b>Saída</b> normal em Lançamentos.</span></div>`:''}
 
     <div class="zin-foot">
       <div>${zielIncomingStatusBadge(row.decision_status)}</div>
@@ -147,95 +145,25 @@ function zielIncomingOpenTransferConfirm(id){
   const row=zielIncomingRows.find(x=>x.id===id);
   if(!row)return toast('Transferência importada não encontrada.','error');
 
+  if(row.direction!=='Saída'){
+    return toast('Retornos/cancelamentos de transferência não entram no fluxo de lançamento.','error');
+  }
+
   const wallet=state.wallets.find(w=>w.id===row.wallet_id);
   if(!wallet)return toast('Carteira de origem não encontrada.','error');
 
   const amount=Number(row.amount||0);
-  const incoming=row.direction==='Entrada';
-  const otherWallets=(state.wallets||[])
-    .filter(w=>w.active!==false&&w.id!==row.wallet_id)
-    .sort((a,b)=>{
-      const biz=businessName(a.business_id).localeCompare(businessName(b.business_id),'pt-BR');
-      return biz||a.name.localeCompare(b.name,'pt-BR');
-    });
 
-  if(incoming){
-    modal('Lançar retorno de transferência',`
-      <form id="zinTransferForm" class="zin-confirm-form">
-        <div class="zin-confirm-summary">
-          <div><small>VALOR QUE RETORNOU</small><strong class="g">${fmt(amount)}</strong></div>
-          <div><small>CARTEIRA</small><strong>${esc(wallet.name)}</strong><span>${esc(businessName(wallet.business_id))}</span></div>
-        </div>
-        <div class="zin-confirm-note">
-          O Mercado Pago informou um <b>cancelamento/retorno de transferência</b>. O ZIEL criará uma Entrada de transferência nesta mesma carteira, mas ela <b>não será tratada como receita</b> no resultado do negócio.
-        </div>
-        <div class="field">
-          <label>Descrição</label>
-          <input class="input" id="zinTransferDescription" maxlength="160" value="${esc(row.description||'Retorno de transferência Mercado Pago')}" required>
-        </div>
-        <div class="actions">
-          <button type="button" class="btn btn-soft" id="zinTransferCancel">Cancelar</button>
-          <button type="submit" class="btn btn-primary" id="zinTransferConfirm">Confirmar lançamento</button>
-        </div>
-      </form>`);
-
-    $('zinTransferCancel').onclick=closeModal;
-    $('zinTransferForm').onsubmit=async e=>{
-      e.preventDefault();
-      const btn=$('zinTransferConfirm');
-      btn.disabled=true;btn.textContent='Lançando…';
-      try{
-        const {data,error}=await supabase.rpc('confirm_imported_transfer',{
-          p_entry_id:row.id,
-          p_mode:'reversal',
-          p_category:null,
-          p_description:$('zinTransferDescription').value.trim(),
-          p_destination_wallet:null
-        });
-        if(error)throw error;
-        if(!data)throw new Error('O lançamento não retornou um identificador válido.');
-        closeModal();
-        await loadAll();
-        await zielLoadIncomingEntries();
-        zielPaintIncoming();
-        toast('Retorno de transferência lançado sem afetar o resultado financeiro.');
-      }catch(error){
-        toast('Não foi possível lançar: '+(error?.message||'erro desconhecido'),'error');
-        if($('zinTransferConfirm')){$('zinTransferConfirm').disabled=false;$('zinTransferConfirm').textContent='Confirmar lançamento';}
-      }
-    };
-    return;
-  }
-
-  modal('Lançar transferência do Mercado Pago',`
+  modal('Lançar transferência como saída',`
     <form id="zinTransferForm" class="zin-confirm-form">
       <div class="zin-confirm-summary">
-        <div><small>VALOR TRANSFERIDO</small><strong class="r">− ${fmt(amount)}</strong></div>
-        <div><small>ORIGEM</small><strong>${esc(wallet.name)}</strong><span>${esc(businessName(wallet.business_id))}</span></div>
+        <div><small>VALOR DA SAÍDA</small><strong class="r">− ${fmt(amount)}</strong></div>
+        <div><small>CARTEIRA</small><strong>${esc(wallet.name)}</strong><span>${esc(businessName(wallet.business_id))}</span></div>
       </div>
 
       <div class="field">
-        <label>Para onde foi esse dinheiro?</label>
-        <select id="zinTransferMode" required>
-          <option value="">Selecione o destino</option>
-          <option value="internal">Foi para outra carteira do ZIEL</option>
-          <option value="expense">Saiu do negócio / destino não controlado</option>
-        </select>
-      </div>
-
-      <div class="field hidden" id="zinTransferDestinationWrap">
-        <label>Carteira de destino</label>
-        <select id="zinTransferDestination">
-          <option value="">Selecione a carteira</option>
-          ${otherWallets.map(w=>`<option value="${esc(w.id)}">${esc(businessName(w.business_id))} — ${esc(w.name)}</option>`).join('')}
-        </select>
-        <div class="mini">Use esta opção quando o dinheiro apenas mudou de conta. O valor não será considerado despesa nem receita.</div>
-      </div>
-
-      <div class="field hidden" id="zinTransferCategoryWrap">
         <label>Categoria da saída</label>
-        <select id="zinTransferCategory">${categoryOptions('Saída')}</select>
-        <div class="mini">Use somente quando o dinheiro realmente saiu do patrimônio controlado pelo negócio.</div>
+        <select id="zinTransferCategory" required>${categoryOptions('Saída')}</select>
       </div>
 
       <div class="field">
@@ -243,59 +171,51 @@ function zielIncomingOpenTransferConfirm(id){
         <input class="input" id="zinTransferDescription" maxlength="160" value="${esc(row.description||'Transferência Mercado Pago')}" required>
       </div>
 
-      <div class="zin-confirm-note" id="zinTransferHelp">
-        Selecione o destino para o ZIEL registrar o movimento corretamente.
+      <div class="zin-confirm-note">
+        Este movimento será registrado diretamente como <b>Saída</b> no fluxo de Lançamentos. O ID externo <b>${esc(row.external_id||'—')}</b> impede que a mesma transferência seja lançada novamente.
       </div>
 
       <div class="actions">
         <button type="button" class="btn btn-soft" id="zinTransferCancel">Cancelar</button>
-        <button type="submit" class="btn btn-primary" id="zinTransferConfirm">Confirmar lançamento</button>
+        <button type="submit" class="btn btn-primary" id="zinTransferConfirm">Confirmar saída</button>
       </div>
     </form>`);
 
-  const paintMode=()=>{
-    const mode=$('zinTransferMode').value;
-    $('zinTransferDestinationWrap').classList.toggle('hidden',mode!=='internal');
-    $('zinTransferCategoryWrap').classList.toggle('hidden',mode!=='expense');
-    $('zinTransferHelp').innerHTML=mode==='internal'
-      ?'<b>Transferência interna:</b> o ZIEL criará a saída do Mercado Pago e a entrada na carteira escolhida, sem alterar lucro/prejuízo.'
-      :mode==='expense'
-        ?'<b>Saída do negócio:</b> o ZIEL criará uma Saída financeira e ela entrará no resultado conforme a categoria escolhida.'
-        :'Selecione o destino para o ZIEL registrar o movimento corretamente.';
-  };
-  $('zinTransferMode').onchange=paintMode;
   $('zinTransferCancel').onclick=closeModal;
-  paintMode();
 
   $('zinTransferForm').onsubmit=async e=>{
     e.preventDefault();
-    const mode=$('zinTransferMode').value;
-    if(!mode)return toast('Informe para onde o dinheiro foi.','error');
-    const destination=mode==='internal'?$('zinTransferDestination').value:null;
-    const category=mode==='expense'?$('zinTransferCategory').value:null;
-    if(mode==='internal'&&!destination)return toast('Selecione a carteira de destino.','error');
-    if(mode==='expense'&&!category)return toast('Selecione a categoria da saída.','error');
+    const category=$('zinTransferCategory').value;
+    const description=$('zinTransferDescription').value.trim();
+    if(!category)return toast('Selecione a categoria da saída.','error');
+    if(!description)return toast('Informe a descrição.','error');
 
     const btn=$('zinTransferConfirm');
-    btn.disabled=true;btn.textContent='Lançando…';
+    btn.disabled=true;
+    btn.textContent='Lançando…';
+
     try{
       const {data,error}=await supabase.rpc('confirm_imported_transfer',{
         p_entry_id:row.id,
-        p_mode:mode,
+        p_mode:'expense',
         p_category:category,
-        p_description:$('zinTransferDescription').value.trim(),
-        p_destination_wallet:destination
+        p_description:description,
+        p_destination_wallet:null
       });
       if(error)throw error;
       if(!data)throw new Error('O lançamento não retornou um identificador válido.');
+
       closeModal();
       await loadAll();
       await zielLoadIncomingEntries();
       zielPaintIncoming();
-      toast(mode==='internal'?'Transferência registrada entre as carteiras.':'Saída registrada em Lançamentos.');
+      toast('Transferência lançada como Saída em Lançamentos.');
     }catch(error){
       toast('Não foi possível lançar: '+(error?.message||'erro desconhecido'),'error');
-      if($('zinTransferConfirm')){$('zinTransferConfirm').disabled=false;$('zinTransferConfirm').textContent='Confirmar lançamento';}
+      if($('zinTransferConfirm')){
+        $('zinTransferConfirm').disabled=false;
+        $('zinTransferConfirm').textContent='Confirmar saída';
+      }
     }
   };
 }
@@ -546,7 +466,7 @@ function zielPaintQueryResult(){
   </div>
   ${q.transfers_pending?'<div class="message"><b>Transferências:</b> o relatório ainda está sendo gerado pelo Mercado Pago. Consulte o mesmo período novamente em alguns instantes.</div>':''}
   ${q.transfer_warning?'<div class="message"><b>Transferências:</b> '+esc(q.transfer_warning)+'</div>':''}
-  <p class="mini">A consulta traz <b>recebimentos aprovados</b> e também <b>transferências/retiradas</b>. Transferências nunca são tratadas automaticamente como receita. Reconsultar o mesmo período <b>atualiza</b> os mesmos IDs, sem duplicar.</p>`;
+  <p class="mini">A consulta traz <b>recebimentos aprovados</b> e <b>transferências/retiradas de saída</b>. Cancelamentos e retornos de transferência são ignorados. Reconsultar o mesmo período <b>atualiza</b> os mesmos IDs, sem duplicar.</p>`;
 
   const showAll=$('zinShowAllQuery');
   if(showAll)showAll.onclick=()=>{
@@ -588,7 +508,11 @@ function zielPaintIncoming(){
     ?{from:zielIncomingLastQuery.date_from,to:zielIncomingLastQuery.date_to}
     :null;
 
-  const rows=zielIncomingRows.filter(row=>{
+  const visibleBase=zielIncomingRows.filter(row=>
+    row.movement_kind!=='transfer'||row.direction==='Saída'
+  );
+
+  const rows=visibleBase.filter(row=>{
     if(status!=='Todos'&&row.decision_status!==status)return false;
     if(walletFilter&&row.wallet_id!==walletFilter)return false;
     if(movement==='Recebimentos'&&row.movement_kind==='transfer')return false;
@@ -611,9 +535,9 @@ function zielPaintIncoming(){
     return true;
   });
 
-  const pending=zielIncomingRows.filter(r=>r.decision_status==='Pendente').length;
-  const confirmed=zielIncomingRows.filter(r=>r.decision_status==='Confirmado').length;
-  const ignored=zielIncomingRows.filter(r=>r.decision_status==='Ignorado').length;
+  const pending=visibleBase.filter(r=>r.decision_status==='Pendente').length;
+  const confirmed=visibleBase.filter(r=>r.decision_status==='Confirmado').length;
+  const ignored=visibleBase.filter(r=>r.decision_status==='Ignorado').length;
 
   if($('zinPending'))$('zinPending').textContent=String(pending);
   if($('zinConfirmed'))$('zinConfirmed').textContent=String(confirmed);
@@ -631,7 +555,7 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
 
   $('content').innerHTML=setTitle(
     'Entradas importadas',
-    'Consulta manual de recebimentos e transferências, com lançamento somente após sua confirmação'
+    'Consulta manual por dia ou período, com lançamento somente após sua confirmação'
   )+`
     <div class="zin-page">
       <section class="zin-query-card">
@@ -640,7 +564,7 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
             <span class="zin-auto-icon">⌕</span>
             <div>
               <strong>Consultar movimentos do Mercado Pago</strong>
-              <p>Escolha a carteira e o dia ou período. O ZIEL busca recebimentos aprovados e transferências/retiradas para sua conferência.</p>
+              <p>Escolha a carteira e o dia ou período. O ZIEL busca recebimentos aprovados e transferências/retiradas de saída para sua conferência.</p>
             </div>
           </div>
           <span class="zin-manual-badge">MANUAL</span>
@@ -725,7 +649,7 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
 
       <div class="zin-duplicate-note">
         <strong>Proteção contra duplicidade</strong>
-        <span>Cada recebimento e cada transferência usam um ID externo único do Mercado Pago. Reconsultar o mesmo período atualiza o registro existente e o banco bloqueia uma segunda confirmação do mesmo item. Transferências internas não alteram receita nem despesa.</span>
+        <span>Cada recebimento e cada transferência usam um ID externo único do Mercado Pago. Reconsultar o mesmo período atualiza o registro existente e o banco bloqueia uma segunda confirmação do mesmo item. Transferências confirmadas são lançadas como Saída.</span>
       </div>
     </div>`;
 
