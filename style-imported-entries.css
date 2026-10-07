@@ -37,3 +37,38 @@
 @media(max-width:480px){
   .zin-query-summary{grid-template-columns:1fr}
 }
+
+
+/* Pagamentos e transferencias importados */
+.zin-query-summary{grid-template-columns:repeat(6,minmax(0,1fr))}
+.zin-kind-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.zin-kind{
+  display:inline-flex;align-items:center;border-radius:999px;padding:3px 7px;
+  font-size:9px;font-weight:850;letter-spacing:.03em;text-transform:uppercase
+}
+.zin-kind.payment{background:#e8f1fa;color:#245a8d}
+.zin-kind.transfer{background:var(--orange-soft);color:var(--orange-dark)}
+.zin-card-transfer{border-left:4px solid var(--orange)}
+.zin-transfer-note{
+  display:flex;gap:5px;align-items:flex-start;padding:9px 10px;border-radius:8px;
+  background:#fff8f2;border:1px solid #f0d7bd;color:#76502c;font-size:10px;line-height:1.45
+}
+.zin-transfer-note strong{flex:0 0 auto}
+.zin-report-pending,.zin-report-warning{
+  display:flex;gap:6px;align-items:flex-start;margin-top:10px;padding:10px 11px;
+  border-radius:9px;font-size:11px;line-height:1.45
+}
+.zin-report-pending{background:#fff8f1;border:1px solid #f0d7bd;color:#76502c}
+.zin-report-warning{background:#fff4f5;border:1px solid #f0c9ce;color:#8b3440}
+.zin-report-pending strong,.zin-report-warning strong{flex:0 0 auto}
+#zinTransferDestinationWrap .mini,#zinTransferCategoryWrap .mini{margin-top:4px;line-height:1.4}
+@media(max-width:1100px){
+  .zin-query-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:600px){
+  .zin-query-summary{grid-template-columns:1fr 1fr}
+  .zin-transfer-note,.zin-report-pending,.zin-report-warning{display:grid}
+}
+@media(max-width:430px){
+  .zin-query-summary{grid-template-columns:1fr}
+}
