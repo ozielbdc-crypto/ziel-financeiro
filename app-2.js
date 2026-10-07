@@ -1,5 +1,5 @@
 function renderDashboard(){
- const txAll=filtered(state.transactions).filter(t=>!['transfer','balance_adjustment'].includes(t.source_type)),pay=filtered(state.payables),rec=filtered(state.receivables),wallets=state.businessFilter?state.wallets.filter(w=>w.business_id===state.businessFilter):state.wallets;
+ const txAll=filtered(state.transactions).filter(t=>!['transfer','balance_adjustment','integration_transfer_reversal'].includes(t.source_type)),pay=filtered(state.payables),rec=filtered(state.receivables),wallets=state.businessFilter?state.wallets.filter(w=>w.business_id===state.businessFilter):state.wallets;
  const entries=txAll.filter(t=>t.type==='Entrada').reduce((a,t)=>a+Number(t.amount),0);
  const exits=txAll.filter(t=>t.type==='Saída').reduce((a,t)=>a+Number(t.amount),0);
  const profit=entries-exits;
