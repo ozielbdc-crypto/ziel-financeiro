@@ -70,7 +70,7 @@ function zielIntegrationRow(wallet,integration){
       </div>
     </div>
     <div class="zint-provider-actions">
-      ${['mercado_pago','asaas'].includes(integration.provider)&&integration.enabled!==false
+      ${['mercado_pago','asaas','lytex'].includes(integration.provider)&&integration.enabled!==false
         ?`<button type="button" class="btn btn-primary" data-zint-test="${esc(wallet.id)}" data-zint-provider="${esc(integration.provider)}">Testar conexão</button>`
         :''}
       <button type="button" class="btn btn-soft" data-zint-edit="${esc(wallet.id)}" data-zint-provider="${esc(integration.provider)}">Atualizar token</button>
@@ -166,11 +166,14 @@ function zielOpenTokenModal(walletId,provider=''){
   const providerSelect=$('zintProvider');
   const paintProviderHelp=()=>{
     const p=providerSelect.value;
+    const label=document.querySelector('label[for="zintToken"]');
+    if(label)label.textContent=p==='lytex'?'Pacote de autenticação Lytex (JSON)':'Token / chave privada';
+    token.placeholder=p==='lytex'?'Cole aqui o JSON completo retornado pela Lytex':'Cole o token aqui';
     const messages={
       mercado_pago:'<strong>Mercado Pago:</strong> use o <b>Access Token de produção</b> da conta correspondente a esta carteira.',
       asaas:'<strong>Asaas:</strong> use a credencial da conta Asaas correspondente a esta carteira.',
       efi:'<strong>Efí:</strong> use a credencial da conta Efí correspondente a esta carteira.',
-      lytex:'<strong>Lytex:</strong> use a credencial da conta Lytex correspondente a esta carteira.',
+      lytex:'<strong>Lytex:</strong> cole o <b>JSON completo</b> retornado pela autenticação, contendo <code>accessToken</code>, <code>refreshToken</code>, <code>expireAt</code> e <code>refreshExpireAt</code>. O ZIEL renovará o access token automaticamente.',
       sgp:'<strong>SGP:</strong> use a credencial da integração correspondente a esta carteira.',
       outro:'<strong>Atenção:</strong> confirme que a credencial pertence exatamente à conta representada por esta carteira.'
     };
@@ -189,8 +192,25 @@ function zielOpenTokenModal(walletId,provider=''){
 
   $('zintTokenForm').onsubmit=async e=>{
     e.preventDefault();
-    const value=token.value.trim();
+    let value=token.value.trim();
     const providerValue=$('zintProvider').value;
+
+    if(providerValue==='lytex'){
+      try{
+        const parsed=JSON.parse(value);
+        if(!parsed||typeof parsed!=='object'||!String(parsed.accessToken||'').trim()||!String(parsed.refreshToken||'').trim()){
+          return toast('Para Lytex, cole o JSON completo com accessToken e refreshToken.','error');
+        }
+        value=JSON.stringify({
+          accessToken:String(parsed.accessToken).trim(),
+          refreshToken:String(parsed.refreshToken).trim(),
+          expireAt:parsed.expireAt==null?null:String(parsed.expireAt),
+          refreshExpireAt:parsed.refreshExpireAt==null?null:String(parsed.refreshExpireAt)
+        });
+      }catch(_){
+        return toast('O pacote Lytex precisa ser um JSON válido. Cole o objeto completo retornado pela autenticação.','error');
+      }
+    }
 
     if(value.length<20)return toast('O token informado parece muito curto.','error');
 
@@ -237,8 +257,8 @@ async function zielTestIntegration(walletId,provider){
   const wallet=(state.wallets||[]).find(w=>w.id===walletId);
   if(!wallet)return toast('Carteira não encontrada.','error');
 
-  if(!['mercado_pago','asaas'].includes(provider)){
-    return toast('O teste automático está disponível para Mercado Pago e Asaas.','error');
+  if(!['mercado_pago','asaas','lytex'].includes(provider)){
+    return toast('O teste automático está disponível para Mercado Pago, Asaas e Lytex.','error');
   }
 
   const providerLabel=zielIntegrationProviderLabel(provider);
@@ -251,7 +271,11 @@ async function zielTestIntegration(walletId,provider){
   }
 
   try{
-    const {data,error}=await supabase.functions.invoke('wallet-integration-test',{
+    const testFunction=provider==='lytex'
+      ?'wallet-integration-test-lytex'
+      :'wallet-integration-test';
+
+    const {data,error}=await supabase.functions.invoke(testFunction,{
       body:{wallet_id:walletId,provider}
     });
 
@@ -286,7 +310,7 @@ async function zielTestIntegration(walletId,provider){
         </div>
 
         <div class="zint-test-grid">
-          <div><small>Período consultado</small><strong>${Number(data.searched_period_days||30)} dias</strong></div>
+          <div><small>Teste realizado</small><strong>${provider==='lytex'?'Validação direta':Number(data.searched_period_days||30)+' dias'}</strong></div>
           <div><small>Registros encontrados</small><strong>${Number(data.total_payments_found||0)}</strong></div>
           ${data.environment?'<div><small>Ambiente</small><strong>'+esc(data.environment==='sandbox'?'Sandbox':'Produção')+'</strong></div>':''}
         </div>
