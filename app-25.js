@@ -678,7 +678,7 @@ async function zielRunIncomingQuery(){
   const btn=$('zinQueryButton');
   zielIncomingQueryInFlight=true;
   btn.disabled=true;
-  btn.textContent='Consultando entradas…';
+  btn.textContent='Consultando movimentações…';
 
   try{
     const {data,error}=await supabase.functions.invoke('wallet-integration-query',{
@@ -686,7 +686,7 @@ async function zielRunIncomingQuery(){
         wallet_id:walletId,
         date_from:from,
         date_to:to,
-        payments_only:true
+        payments_only:false
       }
     });
 
@@ -697,7 +697,7 @@ async function zielRunIncomingQuery(){
     await zielLoadIncomingEntries();
 
     const periodRows=zielIncomingRows.filter(row=>{
-      if(row.wallet_id!==walletId||row.provider!==actualProvider||row.movement_kind==='transfer')return false;
+      if(row.wallet_id!==walletId||row.provider!==actualProvider)return false;
       const key=zielIncomingDateKey(row.approved_at||row.occurred_at);
       return !!key&&key>=from&&key<=to;
     });
@@ -707,10 +707,16 @@ async function zielRunIncomingQuery(){
       row
     ])).values()];
 
-    const grossTotal=uniqueRows.reduce((sum,row)=>sum+Number(row.gross_amount??row.amount??0),0);
-    const netTotal=uniqueRows.reduce((sum,row)=>sum+Number(row.net_amount??row.gross_amount??row.amount??0),0);
-    const feeTotal=uniqueRows.reduce((sum,row)=>sum+Number(row.fee_amount??0),0);
-    const awaiting=uniqueRows.filter(row=>row.available_for_balance===false).length;
+    const paymentRows=uniqueRows.filter(row=>row.movement_kind!=='transfer');
+    const transferRows=uniqueRows.filter(row=>row.movement_kind==='transfer');
+    const outgoingTransfers=transferRows.filter(row=>row.direction==='Saída');
+    const incomingTransfers=transferRows.filter(row=>row.direction==='Entrada');
+    const undefinedTransfers=transferRows.filter(row=>!['Entrada','Saída'].includes(row.direction));
+
+    const grossTotal=paymentRows.reduce((sum,row)=>sum+Number(row.gross_amount??row.amount??0),0);
+    const netTotal=paymentRows.reduce((sum,row)=>sum+Number(row.net_amount??row.gross_amount??row.amount??0),0);
+    const feeTotal=paymentRows.reduce((sum,row)=>sum+Number(row.fee_amount??0),0);
+    const awaiting=paymentRows.filter(row=>row.available_for_balance===false).length;
 
     zielIncomingLastQuery={
       ...data,
@@ -718,9 +724,12 @@ async function zielRunIncomingQuery(){
       provider:actualProvider,
       date_from:from,
       date_to:to,
-      payments_only:true,
-      payments_found:uniqueRows.length,
-      transfers_found:0,
+      payments_only:false,
+      payments_found:paymentRows.length,
+      transfers_found:transferRows.length,
+      outgoing_transfers_found:outgoingTransfers.length,
+      incoming_transfers_found:incomingTransfers.length,
+      ambiguous_transfers_found:undefinedTransfers.length,
       period_gross_total:Math.round(grossTotal*100)/100,
       period_net_total:Math.round(netTotal*100)/100,
       period_fee_total:Math.round(feeTotal*100)/100,
@@ -745,7 +754,7 @@ async function zielRunIncomingQuery(){
   }finally{
     zielIncomingQueryInFlight=false;
     zielIncomingPaintWallet();
-    if($('zinQueryButton'))$('zinQueryButton').textContent='Consultar entradas';
+    if($('zinQueryButton'))$('zinQueryButton').textContent='Consultar movimentações';
   }
 }
 
@@ -764,15 +773,19 @@ function zielPaintQueryResult(){
     <div><small>Carteira</small><strong>${esc(wallet?.name||'Carteira')}</strong><span class="mini">${esc(businessName(wallet?.business_id))}</span></div>
     <div><small>Integração</small><strong>${esc(zielIncomingProviderLabel(q.provider))}</strong><span class="mini">Definida no token da carteira</span></div>
     <div><small>Período consultado</small><strong>${esc(br(q.date_from))}${q.date_from!==q.date_to?' até '+esc(br(q.date_to)):''}</strong></div>
-    <div><small>Entradas encontradas</small><strong>${Number(q.payments_found||0)}</strong></div>
+    <div><small>Recebimentos encontrados</small><strong>${Number(q.payments_found||0)}</strong></div>
+    <div><small>Transferências de saída</small><strong class="r">${Number(q.outgoing_transfers_found||0)}</strong></div>
+    <div><small>Transferências recebidas</small><strong class="g">${Number(q.incoming_transfers_found||0)}</strong></div>
+    <div><small>Transferências a confirmar</small><strong class="a">${Number(q.ambiguous_transfers_found||0)}</strong></div>
     <div class="zin-query-total"><small>${q.date_from===q.date_to?'Total recebido do dia':'Total recebido no período'}</small><strong class="g">${fmt(Number(q.period_gross_total||0))}</strong></div>
-    <div><small>Total líquido</small><strong>${fmt(Number(q.period_net_total??q.period_gross_total??0))}</strong></div>
+    <div><small>Total líquido recebido</small><strong>${fmt(Number(q.period_net_total??q.period_gross_total??0))}</strong></div>
     <div><small>Taxas / deduções</small><strong class="r">${fmt(Number(q.period_fee_total||0))}</strong></div>
-    <div><small>Novas</small><strong class="g">${Number(q.new_entries||0)}</strong></div>
-    <div><small>Já existentes / atualizadas</small><strong>${Number(q.updated_entries??q.already_existing??0)}</strong></div>
+    <div><small>Novos movimentos</small><strong class="g">${Number(q.new_entries||0)}</strong></div>
+    <div><small>Já existentes / atualizados</small><strong>${Number(q.updated_entries??q.already_existing??0)}</strong></div>
     <div><small>Aguardando liberação</small><strong class="a">${Number(q.awaiting_release||0)}</strong></div>
   </div>
-  <p class="mini">A consulta é manual e não lança nada sozinha. Cada entrada usa <b>provedor + ID externo</b>; reconsultar o mesmo período atualiza o mesmo registro e não cria duplicidade.</p>`;
+  ${q.transfer_warning?`<div class="message error">${esc(q.transfer_warning)}</div>`:''}
+  <p class="mini">A consulta é manual e não lança nada sozinha. Recebimentos e transferências usam <b>provedor + ID externo</b>; reconsultar o mesmo período atualiza o mesmo registro e não cria duplicidade.</p>`;
 }
 
 function zielBindIncomingActions(){
@@ -793,7 +806,7 @@ function zielPaintIncoming(){
     if($('zinPending'))$('zinPending').textContent='—';
     if($('zinConfirmed'))$('zinConfirmed').textContent='—';
     if($('zinIgnored'))$('zinIgnored').textContent='—';
-    host.innerHTML='<div class="zin-manual-empty"><strong>Nenhuma consulta realizada.</strong><span>Escolha a carteira, o dia ou período e clique em <b>Consultar entradas</b>. O histórico não é carregado automaticamente.</span></div>';
+    host.innerHTML='<div class="zin-manual-empty"><strong>Nenhuma consulta realizada.</strong><span>Escolha a carteira, o dia ou período e clique em <b>Consultar movimentações</b>. O histórico não é carregado automaticamente.</span></div>';
     return;
   }
 
@@ -840,7 +853,7 @@ function zielPaintIncoming(){
 
   host.innerHTML=rows.length
     ?rows.map(zielIncomingCard).join('')
-    :'<div class="empty">Nenhuma entrada encontrada para este filtro.</div>';
+    :'<div class="empty">Nenhuma movimentação encontrada para este filtro.</div>';
 
   zielBindIncomingActions();
 }
@@ -853,7 +866,7 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
 
   $('content').innerHTML=setTitle(
     'Entradas importadas',
-    'Consulta manual por dia ou período, com lançamento somente após sua confirmação'
+    'Consulta manual por dia ou período, incluindo recebimentos e transferências, com lançamento somente após sua confirmação'
   )+`
     <div class="zin-page">
       <section class="zin-query-card">
@@ -861,7 +874,7 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
           <div>
             <span class="zin-auto-icon">⌕</span>
             <div>
-              <strong>Consultar entradas da carteira</strong>
+              <strong>Consultar movimentações da carteira</strong>
               <p>Escolha a carteira e o dia ou período. O provedor é identificado automaticamente pela integração configurada no token da própria carteira.</p>
             </div>
           </div>
@@ -900,7 +913,7 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
           </div>
 
           <div class="zin-query-action">
-            <button type="button" class="btn btn-primary" id="zinQueryButton" disabled>Consultar entradas</button>
+            <button type="button" class="btn btn-primary" id="zinQueryButton" disabled>Consultar movimentações</button>
           </div>
         </div>
 
@@ -930,6 +943,15 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
         </div>
 
         <div class="field">
+          <label for="zinMovement">Movimento</label>
+          <select id="zinMovement">
+            <option>Todos</option>
+            <option>Recebimentos</option>
+            <option>Transferências</option>
+          </select>
+        </div>
+
+        <div class="field">
           <label for="zinSearch">Buscar</label>
           <input class="input" id="zinSearch" type="search" placeholder="Descrição, ID ou método">
         </div>
@@ -948,6 +970,7 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
   $('zinQueryButton').onclick=zielRunIncomingQuery;
   $('zinStatus').onchange=zielPaintIncoming;
   $('zinWalletFilter').onchange=zielPaintIncoming;
+  $('zinMovement').onchange=zielPaintIncoming;
   $('zinSearch').oninput=zielPaintIncoming;
   zielIncomingPaintDateMode();
   zielPaintQueryResult();
