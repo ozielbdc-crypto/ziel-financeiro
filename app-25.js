@@ -897,7 +897,7 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
 
   $('content').innerHTML=setTitle(
     'Consultar entradas',
-    'Consulta manual por dia ou período, com lançamento no financeiro somente após sua confirmação'
+    'Mercado Pago, Asaas e Lytex · consulta manual por dia ou período, com lançamento somente após sua confirmação'
   )+`
     <div class="zin-page">
       <section class="zin-query-card">
@@ -905,8 +905,8 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
           <div>
             <span class="zin-auto-icon">⌕</span>
             <div>
-              <strong>Consultar movimentações da carteira</strong>
-              <p>Escolha a carteira e o dia ou período. O provedor é identificado automaticamente pela integração configurada no token da própria carteira.</p>
+              <strong>Consultar entradas da carteira</strong>
+              <p>Escolha a carteira e o dia ou período. O ZIEL identifica automaticamente Mercado Pago, Asaas ou Lytex pela integração configurada na própria carteira.</p>
             </div>
           </div>
           <span class="zin-manual-badge">MANUAL</span>
