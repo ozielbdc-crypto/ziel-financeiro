@@ -102,7 +102,11 @@ function zielIntegrationWalletCard(wallet){
       ${integrations.length?integrations.map(i=>zielIntegrationRow(wallet,i)).join(''):'<div class="zint-empty-token"><strong>Nenhum token configurado.</strong><span>O token será guardado de forma criptografada e não ficará visível no navegador.</span></div>'}
     </div>
     <div class="zint-wallet-actions">
-      <button type="button" class="btn btn-primary" data-zint-add="${esc(wallet.id)}">+ Configurar token</button>
+      ${!integrations.length
+        ?`<button type="button" class="btn btn-primary" data-zint-add="${esc(wallet.id)}">+ Configurar token</button>`
+        :integrations.length===1
+          ?`<button type="button" class="btn btn-primary" data-zint-edit="${esc(wallet.id)}" data-zint-provider="${esc(integrations[0].provider)}">Alterar instituição / token</button>`
+          :'<button type="button" class="btn btn-danger" disabled>Mais de uma integração configurada</button>'}
     </div>
   </article>`;
 }
@@ -403,7 +407,7 @@ function zielPaintIntegrations(){
 async function renderWalletIntegrations(seq=zielIntegrationRenderSeq){
   $('content').innerHTML=setTitle(
     'Integrações / Tokens',
-    'Tokens vinculados por carteira e por instituição / provedor'
+    'Cada carteira possui uma única instituição / provedor e sua credencial correspondente'
   )+`
     <div class="zint-page">
       <div class="zint-hero">
