@@ -70,7 +70,7 @@ function zielIntegrationRow(wallet,integration){
       </div>
     </div>
     <div class="zint-provider-actions">
-      ${integration.provider==='mercado_pago'&&integration.enabled!==false
+      ${['mercado_pago','asaas','lytex'].includes(integration.provider)&&integration.enabled!==false
         ?`<button type="button" class="btn btn-primary" data-zint-test="${esc(wallet.id)}" data-zint-provider="${esc(integration.provider)}">Testar conexão</button>`
         :''}
       <button type="button" class="btn btn-soft" data-zint-edit="${esc(wallet.id)}" data-zint-provider="${esc(integration.provider)}">Atualizar token</button>
@@ -257,8 +257,8 @@ async function zielTestIntegration(walletId,provider){
   const wallet=(state.wallets||[]).find(w=>w.id===walletId);
   if(!wallet)return toast('Carteira não encontrada.','error');
 
-  if(provider!=='mercado_pago'){
-    return toast('O teste automático desta tela está disponível somente para Mercado Pago.','error');
+  if(!['mercado_pago','asaas','lytex'].includes(provider)){
+    return toast('O teste automático ainda não está disponível para '+zielIntegrationProviderLabel(provider)+'.','error');
   }
 
   const providerLabel=zielIntegrationProviderLabel(provider);
