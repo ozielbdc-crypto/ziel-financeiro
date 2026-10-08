@@ -176,3 +176,106 @@
   .zin-fee-breakdown-head{align-items:flex-start;flex-direction:column}
   .zin-fee-lines>div{align-items:flex-start}
 }
+
+
+/* Consulta manual — alinhamento v2 */
+.zin-query-layout{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:14px;
+  align-items:stretch
+}
+.zin-query-layout .zin-query-wallet{
+  display:grid;
+  gap:7px;
+  padding-bottom:13px;
+  border-bottom:1px solid #e7edf4
+}
+.zin-query-layout .zin-query-wallet select{
+  min-height:44px
+}
+.zin-wallet-integration-note{
+  margin-top:1px;
+  padding:8px 10px;
+  border-radius:8px;
+  background:#f4f7fa;
+  border:1px solid #e0e7ee;
+  line-height:1.4
+}
+.zin-wallet-integration-note.g{
+  color:#176844;
+  background:#f1f9f4;
+  border-color:#d2e8da
+}
+.zin-wallet-integration-note.r{
+  color:#8b3440;
+  background:#fff6f7;
+  border-color:#f0d2d6
+}
+
+.zin-query-controls{
+  display:grid;
+  grid-template-columns:170px minmax(320px,1fr) auto;
+  gap:12px;
+  align-items:end
+}
+.zin-query-controls .field{
+  margin:0;
+  min-width:0
+}
+.zin-query-mode{grid-column:1}
+.zin-query-day{grid-column:2}
+.zin-query-controls .zin-range{
+  grid-column:2;
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  min-width:0
+}
+.zin-query-controls .zin-query-action{
+  grid-column:3;
+  display:flex;
+  justify-content:flex-end;
+  align-items:flex-end;
+  padding-top:0
+}
+.zin-query-controls .zin-query-action .btn{
+  min-width:220px;
+  min-height:44px
+}
+
+@media(max-width:980px){
+  .zin-query-controls{
+    grid-template-columns:160px minmax(0,1fr)
+  }
+  .zin-query-mode{grid-column:1}
+  .zin-query-day,.zin-query-controls .zin-range{grid-column:2}
+  .zin-query-controls .zin-query-action{
+    grid-column:1/-1;
+    justify-content:flex-end
+  }
+}
+
+@media(max-width:650px){
+  .zin-query-layout{gap:12px}
+  .zin-query-controls{
+    grid-template-columns:1fr;
+    gap:10px
+  }
+  .zin-query-mode,
+  .zin-query-day,
+  .zin-query-controls .zin-range,
+  .zin-query-controls .zin-query-action{
+    grid-column:1
+  }
+  .zin-query-controls .zin-query-action .btn{
+    width:100%;
+    min-width:0
+  }
+}
+
+@media(max-width:460px){
+  .zin-query-controls .zin-range{
+    grid-template-columns:1fr
+  }
+}
