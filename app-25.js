@@ -137,6 +137,12 @@ function zielIncomingCard(row){
   const direction=isMoneyTransfer?'Saída':row.direction;
   const directionKnown=!isTransfer||direction==='Entrada'||direction==='Saída';
   const isCard=!isTransfer&&['credit_card','debit_card','prepaid_card'].includes(String(row.payment_type_id||'').toLowerCase());
+  const isPix=!isTransfer&&(
+    String(row.payment_method_id||'').toLowerCase()==='pix'||
+    String(row.payment_type_id||'').toLowerCase()==='bank_transfer'||
+    String(row.payment_method||'').toLowerCase().includes('pix')
+  );
+  const pixChannel=isPix?String(row.pix_receipt_channel||'Pix'):'';
   const released=row.available_for_balance!==false;
   const linkedPayable=row.linked_payable_id?(state.payables||[]).find(p=>p.id===row.linked_payable_id):null;
   let actions='';
@@ -175,6 +181,7 @@ function zielIncomingCard(row){
         <div class="zin-kind-row">
           <span class="zin-provider">${esc(zielIncomingProviderLabel(row.provider))}</span>
           <span class="zin-kind ${isTransfer?'transfer':'payment'}">${esc(kindLabel)}</span>
+          ${isPix&&pixChannel?`<span class="zin-pix-channel ${pixChannel.includes('via chave')?'direct':'qr'}">${esc(pixChannel)}</span>`:''}
         </div>
         <h3>${esc(row.description||(isTransfer?'Transferência importada':'Entrada importada'))}</h3>
         <span class="mini">${esc(businessName(row.business_id))} · ${esc(wallet?.name||'Carteira')}</span>
@@ -189,6 +196,7 @@ function zielIncomingCard(row){
       <div><small>${isTransfer?'Data do movimento':'Data de aprovação'}</small><strong>${esc(zielIncomingWhen(when))}</strong></div>
       <div><small>${isTransfer?'Tipo no provedor':'Status no provedor'}</small><strong>${esc(zielIncomingProviderStatusLabel(row.provider_transaction_type||row.provider_status||'—',isTransfer?'transfer':'payment'))}</strong></div>
       <div><small>Método</small><strong>${esc(row.payment_method||'—')}</strong></div>
+      ${isPix?`<div><small>Recebimento Pix</small><strong>${esc(pixChannel||'Pix')}</strong></div>`:''}
       <div><small>ID ${esc(zielIncomingProviderLabel(row.provider))}</small><strong>${esc(row.provider_source_id||row.external_id||'—')}</strong></div>
       ${isCard?`<div><small>Parcelas</small><strong>${Number(row.installments||1)}x</strong></div>`:''}
       ${!isTransfer&&fee>0.009?`<div><small>Taxas/deduções totais</small><strong class="r">− ${fmt(fee)}</strong></div>
@@ -857,6 +865,7 @@ function zielPaintIncoming(){
       const wallet=state.wallets.find(w=>w.id===row.wallet_id);
       const hay=[
         row.description,row.external_id,row.external_reference,row.payment_method,
+        row.pix_receipt_channel,row.point_of_interaction_type,
         row.provider_transaction_type,row.movement_kind,row.direction,
         zielIncomingProviderLabel(row.provider),wallet?.name,businessName(row.business_id)
       ].join(' ').toLocaleLowerCase('pt-BR');
@@ -887,8 +896,8 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
   zielIncomingLastQuery=null;
 
   $('content').innerHTML=setTitle(
-    'Entradas importadas',
-    'Consulta manual por dia ou período, incluindo recebimentos e transferências, com lançamento somente após sua confirmação'
+    'Consultar entradas',
+    'Consulta manual por dia ou período, com lançamento no financeiro somente após sua confirmação'
   )+`
     <div class="zin-page">
       <section class="zin-query-card">
@@ -1029,7 +1038,7 @@ renderShell=function(){
   if(navEl&&!navEl.querySelector('[data-page="entradas-importadas"]')){
     const btn=document.createElement('button');
     btn.dataset.page='entradas-importadas';
-    btn.textContent='⇩ Entradas importadas';
+    btn.textContent='⇩ Consultar entradas';
     btn.onclick=()=>{showPage('entradas-importadas');document.body.classList.remove('menu-open');};
 
     const integrationsBtn=navEl.querySelector('[data-page="integracoes"]');
