@@ -918,3 +918,13 @@ input[type="number"]::-webkit-inner-spin-button{
   color:var(--navy2);
   overflow-wrap:anywhere
 }
+
+/* Documento mascarado do pagador */
+.zin-payer-highlight span{
+  font-size:11px;
+  font-weight:700;
+  color:#6b4a2c;
+}
+.zin-payer-card{
+  margin:2px 0 0;
+}
