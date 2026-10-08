@@ -47,6 +47,8 @@ function zielIncomingProviderStatusLabel(status,kind='payment'){
   const s=String(status||'').trim().toLowerCase();
   const map={
     approved:'Aprovado',
+    paid:'Pago',
+    payed:'Pago',
     pending:'Pendente',
     in_process:'Em processamento',
     in_mediation:'Em mediação',
@@ -589,7 +591,7 @@ function zielIncomingWalletOptions(selected=''){
 }
 
 function zielIncomingProviderSupported(provider){
-  return ['mercado_pago','asaas'].includes(provider);
+  return ['mercado_pago','asaas','lytex'].includes(provider);
 }
 
 function zielIncomingPaintWallet(){
@@ -681,12 +683,16 @@ async function zielRunIncomingQuery(){
   btn.textContent='Consultando movimentações…';
 
   try{
-    const {data,error}=await supabase.functions.invoke('wallet-integration-query',{
+    const functionName=provider==='lytex'
+      ?'wallet-integration-query-lytex'
+      :'wallet-integration-query';
+
+    const {data,error}=await supabase.functions.invoke(functionName,{
       body:{
         wallet_id:walletId,
         date_from:from,
         date_to:to,
-        payments_only:false
+        payments_only:provider==='lytex'?true:false
       }
     });
 
