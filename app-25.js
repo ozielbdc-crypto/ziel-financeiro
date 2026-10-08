@@ -134,6 +134,7 @@ function zielIncomingCard(row){
     <div class="zin-meta">
       <div><small>${isTransfer?'Data do movimento':'Data de aprovação'}</small><strong>${esc(zielIncomingWhen(when))}</strong></div>
       <div><small>${isTransfer?'Tipo no provedor':'Status no provedor'}</small><strong>${esc(zielIncomingProviderStatusLabel(row.provider_transaction_type||row.provider_status||'—',isTransfer?'transfer':'payment'))}</strong></div>
+      ${!isTransfer?`<div><small>Pagador</small><strong>${esc(row.payer_name||'Não informado pelo Mercado Pago')}</strong></div>`:''}
       <div><small>Método</small><strong>${esc(row.payment_method||'—')}</strong></div>
       <div><small>ID Mercado Pago</small><strong>${esc(row.provider_source_id||row.external_id||'—')}</strong></div>
       ${isCard?`<div><small>Parcelas</small><strong>${Number(row.installments||1)}x</strong></div>
@@ -301,6 +302,7 @@ function zielIncomingOpenConfirm(id){
         <div><small>VALOR BRUTO</small><strong>${fmt(gross)}</strong></div>
         <div><small>CARTEIRA</small><strong>${esc(wallet?.name||'Carteira')}</strong><span>${esc(businessName(row.business_id))}</span></div>
       </div>
+      ${row.payer_name?`<div class="zin-payer-highlight"><small>PAGADOR</small><strong>${esc(row.payer_name)}</strong></div>`:''}
 
       ${isCard||fee>0.009?`<div class="zin-settlement-summary">
         <div><small>Método</small><strong>${esc(row.payment_method||'Cartão')}</strong></div>
@@ -588,7 +590,7 @@ function zielPaintIncoming(){
     if(q){
       const wallet=state.wallets.find(w=>w.id===row.wallet_id);
       const hay=[
-        row.description,row.external_id,row.external_reference,row.payment_method,
+        row.description,row.payer_name,row.external_id,row.external_reference,row.payment_method,
         row.provider_transaction_type,row.movement_kind,row.direction,
         zielIncomingProviderLabel(row.provider),wallet?.name,businessName(row.business_id)
       ].join(' ').toLocaleLowerCase('pt-BR');
