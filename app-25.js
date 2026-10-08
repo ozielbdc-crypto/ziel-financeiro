@@ -568,17 +568,18 @@ function zielIncomingWalletOptions(selected='',provider=''){
 }
 
 function zielIncomingQueryableProviders(){
-  const providers=[...new Set(zielIncomingIntegrations.map(i=>i.provider).filter(Boolean))];
-  const order=['mercado_pago','asaas','efi','lytex','sgp','outro'];
-  return providers.sort((a,b)=>{
-    const ai=order.indexOf(a),bi=order.indexOf(b);
-    return (ai<0?999:ai)-(bi<0?999:bi)||String(a).localeCompare(String(b),'pt-BR');
-  });
+  const standard=['mercado_pago','asaas','efi','lytex'];
+  const configured=[...new Set(zielIncomingIntegrations.map(i=>i.provider).filter(Boolean))];
+  const extra=configured.filter(p=>!standard.includes(p));
+  return [...standard,...extra];
 }
 
 function zielIncomingProviderOptions(selected=''){
   const providers=zielIncomingQueryableProviders();
-  return providers.map(provider=>`<option value="${esc(provider)}" ${provider===selected?'selected':''}>${esc(zielIncomingProviderLabel(provider))}</option>`).join('');
+  return providers.map(provider=>{
+    const configured=zielIncomingIntegrations.some(i=>i.provider===provider&&i.enabled!==false);
+    return `<option value="${esc(provider)}" ${provider===selected?'selected':''}>${esc(zielIncomingProviderLabel(provider))}${configured?'':' — sem token ativo'}</option>`;
+  }).join('');
 }
 
 function zielIncomingProviderSupported(provider){
@@ -604,9 +605,13 @@ function zielIncomingPaintProvider(){
   if(queryButton)queryButton.disabled=!wallets.length||!supported;
 
   if(note){
+    const configured=zielIncomingIntegrations.some(i=>i.provider===provider&&i.enabled!==false);
     if(!provider){
       note.textContent='Selecione uma instituição / provedor.';
       note.className='mini';
+    }else if(!configured){
+      note.textContent='Nenhum token ativo de '+zielIncomingProviderLabel(provider)+' foi configurado.';
+      note.className='mini r';
     }else if(!supported){
       note.textContent=zielIncomingProviderLabel(provider)+' está configurado, mas o conector de consulta ainda não foi ativado.';
       note.className='mini r';
