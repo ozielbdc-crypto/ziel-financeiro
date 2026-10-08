@@ -1,17 +1,17 @@
-// Consulta manual de vendas \u2014 Mercado Pago apenas.
-// Mant\u00E9m o fluxo: consultar por dia/per\u00EDodo -> revisar -> confirmar -> Lan\u00E7amentos.
-// Transfer\u00EAncias e outros provedores ficam fora desta tela.
+// Consulta manual de entradas — Mercado Pago, Asaas e Lytex.
+// Fluxo: escolher carteira -> dia/período -> revisar -> confirmar -> Lançamentos.
+// A tela consulta somente recebimentos; transferências ficam fora deste fluxo.
 
 zielLoadIncomingIntegrations = async function(){
   const {data,error}=await supabase.rpc('list_wallet_integrations');
   if(error)throw error;
   zielIncomingIntegrations=(Array.isArray(data)?data:[])
-    .filter(i=>i.enabled!==false&&i.provider==='mercado_pago');
+    .filter(i=>i.enabled!==false&&['mercado_pago','asaas','lytex'].includes(i.provider));
   return zielIncomingIntegrations;
 };
 
 zielIncomingProviderSupported = function(provider){
-  return provider==='mercado_pago';
+  return ['mercado_pago','asaas','lytex'].includes(provider);
 };
 
 zielIncomingPaintWallet = function(){
@@ -21,57 +21,80 @@ zielIncomingPaintWallet = function(){
   const integrations=zielIncomingIntegrationsForWallet(walletId);
 
   if(!walletId){
-    if(note){note.textContent='Selecione uma carteira com token Mercado Pago configurado.';note.className='mini';}
+    if(note){
+      note.textContent='Selecione uma carteira com Mercado Pago, Asaas ou Lytex configurado.';
+      note.className='mini';
+    }
     if(button)button.disabled=true;
     return;
   }
 
-  if(integrations.length!==1||integrations[0].provider!=='mercado_pago'){
+  if(integrations.length!==1){
     if(note){
-      note.textContent='Esta tela aceita somente uma integra\u00E7\u00E3o Mercado Pago ativa por carteira.';
+      note.textContent=integrations.length
+        ?'Esta carteira possui mais de uma integração ativa. Mantenha somente uma instituição vinculada à carteira.'
+        :'Esta carteira não possui integração ativa.';
       note.className='mini r';
     }
     if(button)button.disabled=true;
     return;
   }
 
+  const provider=integrations[0].provider;
+  const supported=zielIncomingProviderSupported(provider);
   if(note){
-    note.textContent='Mercado Pago \u00B7 consulta manual de vendas aprovadas usando o token protegido desta carteira.';
-    note.className='mini g';
+    note.textContent=supported
+      ?zielIncomingProviderLabel(provider)+' · consulta manual de recebimentos usando a credencial protegida desta carteira.'
+      :zielIncomingProviderLabel(provider)+' ainda não possui conector de consulta.';
+    note.className=supported?'mini g':'mini r';
   }
-  if(button)button.disabled=zielIncomingQueryInFlight;
+  if(button)button.disabled=zielIncomingQueryInFlight||!supported;
 };
 
 zielRunIncomingQuery = async function(){
   if(zielIncomingQueryInFlight)return;
 
   const walletId=$('zinQueryWallet')?.value||'';
-  if(!walletId)return toast('Selecione uma carteira Mercado Pago.','error');
+  if(!walletId)return toast('Selecione uma carteira integrada.','error');
 
   const integrations=zielIncomingIntegrationsForWallet(walletId);
-  if(integrations.length!==1||integrations[0].provider!=='mercado_pago'){
-    return toast('Esta tela consulta somente carteiras com token Mercado Pago ativo.','error');
+  if(integrations.length!==1){
+    return toast(
+      integrations.length
+        ?'Esta carteira possui mais de uma integração ativa. Corrija em Integrações / Tokens.'
+        :'Esta carteira não possui integração ativa.',
+      'error'
+    );
+  }
+
+  const provider=integrations[0].provider;
+  if(!zielIncomingProviderSupported(provider)){
+    return toast('A consulta de '+zielIncomingProviderLabel(provider)+' ainda não está disponível.','error');
   }
 
   const {from,to}=zielIncomingQueryDates();
-  if(!from||!to)return toast('Informe a data ou per\u00EDodo da consulta.','error');
-  if(from>to)return toast('A data inicial n\u00E3o pode ser maior que a data final.','error');
+  if(!from||!to)return toast('Informe a data ou período da consulta.','error');
+  if(from>to)return toast('A data inicial não pode ser maior que a data final.','error');
 
   const start=new Date(from+'T00:00:00');
   const end=new Date(to+'T00:00:00');
   const days=Math.round((end-start)/86400000);
-  if(!Number.isFinite(days)||days<0)return toast('Per\u00EDodo inv\u00E1lido.','error');
-  if(days>365)return toast('Consulte no m\u00E1ximo 366 dias por vez.','error');
+  if(!Number.isFinite(days)||days<0)return toast('Período inválido.','error');
+  if(days>365)return toast('Consulte no máximo 366 dias por vez.','error');
 
   const btn=$('zinQueryButton');
   zielIncomingQueryInFlight=true;
   if(btn){
     btn.disabled=true;
-    btn.textContent='Consultando vendas\u2026';
+    btn.textContent='Consultando '+zielIncomingProviderLabel(provider)+'…';
   }
 
   try{
-    const {data,error}=await supabase.functions.invoke('wallet-integration-query',{
+    const functionName=provider==='lytex'
+      ?'wallet-integration-query-lytex'
+      :'wallet-integration-query';
+
+    const {data,error}=await supabase.functions.invoke(functionName,{
       body:{
         wallet_id:walletId,
         date_from:from,
@@ -80,23 +103,36 @@ zielRunIncomingQuery = async function(){
       }
     });
 
-    if(error)throw new Error(error.message||'Falha ao consultar o backend.');
-    if(!data?.ok)throw new Error(data?.error||'A consulta n\u00E3o foi conclu\u00EDda.');
-    if(String(data.provider||'mercado_pago')!=='mercado_pago'){
-      throw new Error('A consulta retornou um provedor diferente do Mercado Pago.');
+    if(error){
+      let message=error.message||'Falha ao consultar o backend.';
+      try{
+        const response=error.context;
+        if(response&&typeof response.clone==='function'){
+          const payload=await response.clone().json();
+          if(payload?.error)message=payload.error;
+        }
+      }catch(_){}
+      throw new Error(message);
+    }
+
+    if(!data?.ok)throw new Error(data?.error||'A consulta não foi concluída.');
+
+    const actualProvider=String(data.provider||provider);
+    if(actualProvider!==provider){
+      throw new Error('A consulta retornou um provedor diferente da configuração da carteira.');
     }
 
     await zielLoadIncomingEntries();
 
     const periodRows=zielIncomingRows.filter(row=>{
-      if(row.wallet_id!==walletId||row.provider!=='mercado_pago')return false;
+      if(row.wallet_id!==walletId||row.provider!==provider)return false;
       if(row.movement_kind==='transfer')return false;
       const key=zielIncomingDateKey(row.approved_at||row.occurred_at);
       return !!key&&key>=from&&key<=to;
     });
 
     const paymentRows=[...new Map(periodRows.map(row=>[
-      String(row.external_id||row.id||''),
+      String(row.provider||'')+'|'+String(row.external_id||row.id||''),
       row
     ])).values()];
 
@@ -108,7 +144,7 @@ zielRunIncomingQuery = async function(){
     zielIncomingLastQuery={
       ...data,
       wallet_id:walletId,
-      provider:'mercado_pago',
+      provider,
       date_from:from,
       date_to:to,
       payments_only:true,
@@ -122,7 +158,7 @@ zielRunIncomingQuery = async function(){
       period_fee_total:Math.round(feeTotal*100)/100,
       awaiting_release:awaiting,
       new_entries:Number(data.new_entries??data.payments_new??0),
-      updated_entries:Number(data.updated_entries??data.already_existing??0)
+      updated_entries:Number(data.updated_entries??data.payments_updated??data.already_existing??0)
     };
 
     if($('zinWalletFilter'))$('zinWalletFilter').value=walletId;
@@ -132,15 +168,16 @@ zielRunIncomingQuery = async function(){
     zielPaintIncoming();
 
     toast(
-      'Consulta conclu\u00EDda: '+paymentRows.length+' venda(s), '+
-      Number(zielIncomingLastQuery.new_entries||0)+' nova(s) e '+
-      Number(zielIncomingLastQuery.updated_entries||0)+' j\u00E1 existente(s)/atualizada(s).'
+      'Consulta '+zielIncomingProviderLabel(provider)+' concluída: '+
+      paymentRows.length+' recebimento(s), '+
+      Number(zielIncomingLastQuery.new_entries||0)+' novo(s) e '+
+      Number(zielIncomingLastQuery.updated_entries||0)+' já conhecido(s)/atualizado(s).'
     );
   }catch(error){
     toast('Consulta falhou: '+(error?.message||'erro desconhecido'),'error');
   }finally{
     zielIncomingQueryInFlight=false;
-    if($('zinQueryButton'))$('zinQueryButton').textContent='Consultar vendas';
+    if($('zinQueryButton'))$('zinQueryButton').textContent='Consultar entradas';
     zielIncomingPaintWallet();
   }
 };
@@ -151,24 +188,26 @@ zielPaintQueryResult = function(){
 
   const q=zielIncomingLastQuery;
   if(!q){
-    host.innerHTML='<div class="zin-query-empty">Escolha a carteira Mercado Pago e o dia ou per\u00EDodo para consultar as vendas.</div>';
+    host.innerHTML='<div class="zin-query-empty">Escolha uma carteira e o dia ou período para consultar os recebimentos.</div>';
     return;
   }
 
   const wallet=state.wallets.find(w=>w.id===q.wallet_id);
+  const providerLabel=zielIncomingProviderLabel(q.provider);
+
   host.innerHTML=`<div class="zin-query-summary">
     <div><small>Carteira</small><strong>${esc(wallet?.name||'Carteira')}</strong><span class="mini">${esc(businessName(wallet?.business_id))}</span></div>
-    <div><small>Provedor</small><strong>Mercado Pago</strong><span class="mini">Token protegido da carteira</span></div>
-    <div><small>Per\u00EDodo consultado</small><strong>${esc(br(q.date_from))}${q.date_from!==q.date_to?' at\u00E9 '+esc(br(q.date_to)):''}</strong></div>
-    <div><small>Vendas encontradas</small><strong>${Number(q.payments_found||0)}</strong></div>
-    <div class="zin-query-total"><small>${q.date_from===q.date_to?'Total bruto do dia':'Total bruto no per\u00EDodo'}</small><strong class="g">${fmt(Number(q.period_gross_total||0))}</strong></div>
-    <div><small>Total l\u00EDquido</small><strong>${fmt(Number(q.period_net_total??q.period_gross_total??0))}</strong></div>
-    <div><small>Taxas / dedu\u00E7\u00F5es</small><strong class="r">${fmt(Number(q.period_fee_total||0))}</strong></div>
+    <div><small>Instituição</small><strong>${esc(providerLabel)}</strong><span class="mini">Credencial protegida da carteira</span></div>
+    <div><small>Período consultado</small><strong>${esc(br(q.date_from))}${q.date_from!==q.date_to?' até '+esc(br(q.date_to)):''}</strong></div>
+    <div><small>Entradas encontradas</small><strong>${Number(q.payments_found||0)}</strong></div>
+    <div class="zin-query-total"><small>${q.date_from===q.date_to?'Total bruto do dia':'Total bruto no período'}</small><strong class="g">${fmt(Number(q.period_gross_total||0))}</strong></div>
+    <div><small>Total líquido</small><strong>${fmt(Number(q.period_net_total??q.period_gross_total??0))}</strong></div>
+    <div><small>Taxas / deduções</small><strong class="r">${fmt(Number(q.period_fee_total||0))}</strong></div>
     <div><small>Novas na consulta</small><strong class="g">${Number(q.new_entries||0)}</strong></div>
-    <div><small>J\u00E1 conhecidas</small><strong>${Number(q.updated_entries||0)}</strong></div>
-    <div><small>Aguardando libera\u00E7\u00E3o</small><strong class="a">${Number(q.awaiting_release||0)}</strong></div>
+    <div><small>Já conhecidas</small><strong>${Number(q.updated_entries||0)}</strong></div>
+    <div><small>Aguardando liberação</small><strong class="a">${Number(q.awaiting_release||0)}</strong></div>
   </div>
-  <p class="mini">A consulta \u00E9 manual. Nenhuma venda vira lan\u00E7amento sem sua confirma\u00E7\u00E3o. O <b>ID do pagamento do Mercado Pago</b> \u00E9 usado para impedir duplicidade ao reconsultar e ao lan\u00E7ar.</p>`;
+  <p class="mini">A consulta é manual. Nenhuma entrada vira lançamento sem sua confirmação. O ZIEL usa <b>provedor + ID externo</b> para impedir duplicidade ao consultar novamente e ao lançar.</p>`;
 };
 
 renderIncomingEntries = async function(seq=zielIncomingRenderSeq){
@@ -178,17 +217,17 @@ renderIncomingEntries = async function(seq=zielIncomingRenderSeq){
   zielIncomingLastQuery=null;
 
   $('content').innerHTML=setTitle(
-    'Consulta de vendas \u2014 Mercado Pago',
-    'Escolha um dia ou per\u00EDodo, revise as vendas e lance somente as que voc\u00EA confirmar'
+    'Consultar entradas',
+    'Mercado Pago, Asaas e Lytex · consulta manual por dia ou período e lançamento somente após confirmação'
   )+`
     <div class="zin-page">
       <section class="zin-query-card">
         <div class="zin-query-head">
           <div>
-            <span class="zin-auto-icon">\u2315</span>
+            <span class="zin-auto-icon">⌕</span>
             <div>
-              <strong>Consultar vendas pelo token do Mercado Pago/</strong>
-              <p>A busca \u00E9 feita somente quando voc\u00EA clicar em Consultar vendas. N\u00E3o existe consulta autom\u00D1tica nesta tela.</p>
+              <strong>Consultar entradas da carteira</strong>
+              <p>Escolha a carteira e o período. O ZIEL usa automaticamente o conector da instituição vinculada àquela carteira.</p>
             </div>
           </div>
           <span class="zin-manual-badge">MANUAL</span>
@@ -196,8 +235,8 @@ renderIncomingEntries = async function(seq=zielIncomingRenderSeq){
 
         <div class="zin-query-grid zin-query-layout">
           <div class="field zin-query-wallet">
-            <label for="zinQueryWallet">Carteira Mercado Pago</label>
-            <select id="zinQueryWallet"><option value="">Carregando carteiras\u2026</option></select>
+            <label for="zinQueryWallet">Carteira integrada</label>
+            <select id="zinQueryWallet"><option value="">Carregando carteiras…</option></select>
             <div class="mini zin-wallet-integration-note" id="zinWalletIntegrationNote"></div>
           </div>
 
@@ -206,7 +245,7 @@ renderIncomingEntries = async function(seq=zielIncomingRenderSeq){
               <label for="zinQueryMode">Consulta</label>
               <select id="zinQueryMode">
                 <option value="day">Um dia</option>
-                <option value="period">Per\u00EDodo</option>
+                <option value="period">Período</option>
               </select>
             </div>
 
@@ -221,13 +260,13 @@ renderIncomingEntries = async function(seq=zielIncomingRenderSeq){
                 <input class="input" id="zinQueryFrom" type="date" value="${today}" max="${today}">
               </div>
               <div class="field">
-                <label for="zinQueryTo">At\u00E9</label>
+                <label for="zinQueryTo">Até</label>
                 <input class="input" id="zinQueryTo" type="date" value="${today}" max="${today}">
               </div>
             </div>
 
             <div class="zin-query-action">
-              <button type="button" class="btn btn-primary" id="zinQueryButton" disabled>Consultar vendas</button>
+              <button type="button" class="btn btn-primary" id="zinQueryButton" disabled>Consultar entradas</button>
             </div>
           </div>
         </div>
@@ -236,14 +275,14 @@ renderIncomingEntries = async function(seq=zielIncomingRenderSeq){
       </section>
 
       <div class="zin-stats">
-        <div><span>Pendentes</span><strong id="zinPending">\u2014</strong><small>Vendas consultadas ainda n\u00E3o lan\u00E7adas</small></div>
-        <div><span>Confirmadas</span><strong id="zinConfirmed">\u2014</strong><small>J\u00E1 constam em Lan\u00E7amentos</small></div>
-        <div><span>Ignoradas</span><strong id="zinIgnored">\u2014</strong><small>N\u00E3o ser\u00E3o lan\u00E7adas</small></div>
+        <div><span>Pendentes</span><strong id="zinPending">—</strong><small>Entradas consultadas ainda não lançadas</small></div>
+        <div><span>Confirmadas</span><strong id="zinConfirmed">—</strong><small>Já constam em Lançamentos</small></div>
+        <div><span>Ignoradas</span><strong id="zinIgnored">—</strong><small>Não serão lançadas</small></div>
       </div>
 
       <div class="zin-toolbar zin-toolbar-manual">
         <div class="field">
-          <label for="zinStatus">Situa\u00E7\u00E3o </label>
+          <label for="zinStatus">Situação</label>
           <select id="zinStatus">
             <option>Pendente</option>
             <option>Confirmado</option>
@@ -258,18 +297,18 @@ renderIncomingEntries = async function(seq=zielIncomingRenderSeq){
         </div>
 
         <div class="field">
-          <label for="zinSearch">Buscar venda</label>
-          <input class="input" id="zinSearch" type="search" placeholder="Descri\u00E7\u00E3o, ID ou m\u00E9todo">
+          <label for="zinSearch">Buscar entrada</label>
+          <input class="input" id="zinSearch" type="search" placeholder="Descrição, ID ou método">
         </div>
       </div>
 
       <div id="zinList">
-        <div class="zin-manual-empty"><strong>Nenhuma consulta realizada.</strong><span>Escolha a carteira e o per\u00EDodo acima para buscar vendas do Mercado Pago.</span></div>
+        <div class="zin-manual-empty"><strong>Nenhuma consulta realizada.</strong><span>Escolha a carteira e o período acima para buscar entradas.</span></div>
       </div>
 
       <div class="zin-duplicate-note">
-        <strong>Prote\u00E7\u00E3o contra duplicidade</strong>
-        <span>Cada venda \u00E9 identificada pelo <b>ID do pagamento do Mercado Pago</b>. Consultar novamente o mesmo dia n\u00E3o ceria outra venda; e uma venda j\u00E1 confirmada n\u00E3o pode gerar um segundo lan\u00E7amento.</span>
+        <strong>Proteção contra duplicidade</strong>
+        <span>Cada entrada é identificada por <b>instituição + ID externo</b>. Reconsultar o mesmo período atualiza o registro existente; uma entrada já confirmada não pode gerar um segundo lançamento.</span>
       </div>
     </div>`;
 
@@ -290,24 +329,24 @@ renderIncomingEntries = async function(seq=zielIncomingRenderSeq){
     const wallets=zielIncomingConfiguredWallets();
     $('zinQueryWallet').innerHTML=wallets.length
       ?zielIncomingWalletOptions(wallets[0]?.id||'')
-      :'<option value="">Nenhuma carteira Mercado Pago com token ativo</option>';
+      :'<option value="">Nenhuma carteira Mercado Pago, Asaas ou Lytex com token ativo</option>';
     $('zinQueryWallet').disabled=!wallets.length;
 
-    $('zinWalletFilter').innerHTML='<option value="">Todas</option>'+ 
-      wallets.map(w=>`<option value="${esc(w.id)}">${esc(businessName(w.business_id))} \u2014 ${esc(w.name)}</option>`).join('');
+    $('zinWalletFilter').innerHTML='<option value="">Todas</option>'+
+      wallets.map(w=>`<option value="${esc(w.id)}">${esc(businessName(w.business_id))} — ${esc(w.name)}</option>`).join('');
 
     zielIncomingPaintWallet();
     zielPaintIncoming();
   }catch(error){
     if(seq!==zielIncomingRenderSeq)return;
     const host=$('zinList');
-    if(host)host.innerHTML='<div class="message error">N\u00E3o foi poss\u00EDvel carregar a integra\u00E7\u00E3o Mercado Pago: '+esc(error?.message||'erro desconhecido')+'</div>';
+    if(host)host.innerHTML='<div class="message error">Não foi possível carregar as integrações: '+esc(error?.message||'erro desconhecido')+'</div>';
   }
 };
 
-const _zielMpSalesPreviousRenderShell=renderShell;
+const _zielMultiIncomingPreviousRenderShell=renderShell;
 renderShell=function(){
-  _zielMpSalesPreviousRenderShell();
+  _zielMultiIncomingPreviousRenderShell();
   const btn=document.querySelector('.sidebar .nav [data-page="entradas-importadas"]');
-  if(btn)btn.textContent='\u2315 Consulta de vendas';
+  if(btn)btn.textContent='⇩ Consultar entradas';
 };
