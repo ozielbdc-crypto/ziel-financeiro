@@ -881,39 +881,41 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
           <span class="zin-manual-badge">MANUAL</span>
         </div>
 
-        <div class="zin-query-grid">
+        <div class="zin-query-grid zin-query-layout">
           <div class="field zin-query-wallet">
             <label for="zinQueryWallet">Carteira</label>
             <select id="zinQueryWallet"><option value="">Carregando carteiras…</option></select>
-            <div class="mini" id="zinWalletIntegrationNote"></div>
+            <div class="mini zin-wallet-integration-note" id="zinWalletIntegrationNote"></div>
           </div>
 
-          <div class="field">
-            <label for="zinQueryMode">Consulta</label>
-            <select id="zinQueryMode">
-              <option value="day">Um dia</option>
-              <option value="period">Período</option>
-            </select>
-          </div>
-
-          <div class="field" id="zinDayWrap">
-            <label for="zinQueryDay">Data</label>
-            <input class="input" id="zinQueryDay" type="date" value="${today}" max="${today}">
-          </div>
-
-          <div class="zin-range hidden" id="zinRangeWrap">
-            <div class="field">
-              <label for="zinQueryFrom">De</label>
-              <input class="input" id="zinQueryFrom" type="date" value="${today}" max="${today}">
+          <div class="zin-query-controls">
+            <div class="field zin-query-mode">
+              <label for="zinQueryMode">Consulta</label>
+              <select id="zinQueryMode">
+                <option value="day">Um dia</option>
+                <option value="period">Período</option>
+              </select>
             </div>
-            <div class="field">
-              <label for="zinQueryTo">Até</label>
-              <input class="input" id="zinQueryTo" type="date" value="${today}" max="${today}">
-            </div>
-          </div>
 
-          <div class="zin-query-action">
-            <button type="button" class="btn btn-primary" id="zinQueryButton" disabled>Consultar movimentações</button>
+            <div class="field zin-query-day" id="zinDayWrap">
+              <label for="zinQueryDay">Data</label>
+              <input class="input" id="zinQueryDay" type="date" value="${today}" max="${today}">
+            </div>
+
+            <div class="zin-range hidden" id="zinRangeWrap">
+              <div class="field">
+                <label for="zinQueryFrom">De</label>
+                <input class="input" id="zinQueryFrom" type="date" value="${today}" max="${today}">
+              </div>
+              <div class="field">
+                <label for="zinQueryTo">Até</label>
+                <input class="input" id="zinQueryTo" type="date" value="${today}" max="${today}">
+              </div>
+            </div>
+
+            <div class="zin-query-action">
+              <button type="button" class="btn btn-primary" id="zinQueryButton" disabled>Consultar movimentações</button>
+            </div>
           </div>
         </div>
 
