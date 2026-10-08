@@ -600,6 +600,9 @@ function zielPaintQueryResult(){
   host.innerHTML=`<div class="zin-query-summary">
     <div><small>Período consultado</small><strong>${esc(br(q.date_from))}${q.date_from!==q.date_to?' até '+esc(br(q.date_to)):''}</strong></div>
     <div><small>Entradas localizadas</small><strong>${Number(q.payments_found||0)}</strong></div>
+    <div class="zin-query-total"><small>Total das entradas no período</small><strong class="g">${fmt(Number(q.period_gross_total||0))}</strong><span class="mini">Soma dos pagamentos aprovados, sem transferências</span></div>
+    <div><small>Total líquido</small><strong>${fmt(Number(q.period_net_total??q.period_gross_total??0))}</strong><span class="mini">Após taxas/deduções informadas pelo Mercado Pago</span></div>
+    <div><small>Taxas / deduções</small><strong class="r">${fmt(Number(q.period_fee_total||0))}</strong></div>
     <div><small>Novos movimentos</small><strong class="g">${Number(q.new_entries||0)}</strong></div>
     <div><small>Já existentes / atualizadas</small><strong>${Number(q.updated_entries??q.already_existing??0)}</strong></div>
     <div><small>Transferências localizadas</small><strong>${Number(q.transfers_found||0)}</strong><span class="mini">${Number(q.incoming_transfers_found||0)} recebida(s) · ${Number(q.outgoing_transfers_found||0)} enviada(s) · ${Number(q.ambiguous_transfers_found||0)} a confirmar</span></div>
