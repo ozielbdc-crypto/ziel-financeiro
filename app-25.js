@@ -620,22 +620,18 @@ async function zielRunIncomingQuery(){
   };
 
   try{
-    // Primeira passagem: busca e grava os pagamentos retornados pelo provedor.
-    const first=await invoke();
-
-    // Segunda passagem automática: confirma o mesmo período antes de atualizar a tela.
-    // O usuário não precisa mais clicar duas vezes. Como o banco usa o ID único do
-    // Mercado Pago, esta verificação apenas insere o que faltou ou atualiza o mesmo registro.
-    btn.textContent='Verificando consulta…';
-    await new Promise(resolve=>setTimeout(resolve,250));
-    const second=await invoke();
+    // Uma única chamada deve fechar a consulta e devolver o total do período.
+    // O backend calcula os totais diretamente a partir da resposta do Mercado Pago
+    // e faz upsert pelo ID externo, portanto não é necessário consultar duas vezes.
+    const result=await invoke();
 
     zielIncomingLastQuery={
-      ...second,
-      new_entries:Number(first.new_entries||0)+Number(second.new_entries||0),
-      payments_new:Number(first.payments_new||0)+Number(second.payments_new||0),
-      verification_passes:2
+      ...result,
+      verification_passes:1
     };
+
+    // Mostra os totais imediatamente no primeiro clique.
+    zielPaintQueryResult();
 
     await zielLoadIncomingEntries();
 
@@ -643,13 +639,12 @@ async function zielRunIncomingQuery(){
     if($('zinStatus'))$('zinStatus').value='Todos';
     if($('zinMovement'))$('zinMovement').value='Todos';
 
-    zielPaintQueryResult();
     zielPaintIncoming();
 
     toast(
-      'Consulta concluída em uma única ação: '+
-      Number(zielIncomingLastQuery.new_entries||0)+' nova(s), '+
-      Number(second.updated_entries||0)+' existente(s)/atualizada(s).'
+      'Consulta concluída: '+
+      Number(result.new_entries||0)+' nova(s), '+
+      Number(result.updated_entries||0)+' existente(s)/atualizada(s).'
     );
   }catch(error){
     toast('Consulta falhou: '+(error?.message||'erro desconhecido'),'error');
