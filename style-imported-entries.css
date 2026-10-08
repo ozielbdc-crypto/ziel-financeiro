@@ -148,3 +148,30 @@
 @media(max-width:430px){
   .zin-payable-match{grid-template-columns:1fr}
 }
+
+
+/* Detalhamento de taxas Mercado Pago */
+.zin-fee-breakdown{
+  display:grid;gap:8px;padding:10px 11px;border:1px solid #efd9c6;
+  border-left:4px solid var(--orange);border-radius:9px;background:#fffaf6
+}
+.zin-fee-breakdown.compact{margin-top:-2px}
+.zin-fee-breakdown-head{
+  display:flex;align-items:center;justify-content:space-between;gap:10px
+}
+.zin-fee-breakdown-head strong{font-size:11px;color:#6f451f}
+.zin-fee-breakdown-head span{font-size:11px;font-weight:850;color:var(--red);white-space:nowrap}
+.zin-fee-lines{display:grid;gap:5px}
+.zin-fee-lines>div{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:6px 8px;border-radius:7px;background:#fff;border:1px solid #f0e3d7
+}
+.zin-fee-lines span{font-size:10px;color:#735a45;overflow-wrap:anywhere}
+.zin-fee-lines b{font-size:10px;color:var(--red);white-space:nowrap}
+.zin-fee-breakdown p{
+  margin:0;font-size:9.5px;line-height:1.45;color:#7b6a5c
+}
+@media(max-width:520px){
+  .zin-fee-breakdown-head{align-items:flex-start;flex-direction:column}
+  .zin-fee-lines>div{align-items:flex-start}
+}
