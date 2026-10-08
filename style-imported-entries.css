@@ -76,7 +76,7 @@
 
 /* Filtros de recebimentos e transferencias */
 .zin-toolbar-manual{
-  grid-template-columns:160px minmax(220px,1.2fr) 180px minmax(240px,1.3fr)
+  grid-template-columns:160px minmax(220px,1.1fr) minmax(260px,1.4fr)
 }
 @media(max-width:1050px){
   .zin-toolbar-manual{grid-template-columns:1fr 1fr}
