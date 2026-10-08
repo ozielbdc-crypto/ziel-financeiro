@@ -618,7 +618,7 @@ async function zielRunIncomingQuery(){
 
     if($('zinWalletFilter'))$('zinWalletFilter').value=walletId;
     if($('zinStatus'))$('zinStatus').value='Todos';
-    if($('zinMovement'))$('zinMovement').value='Todos';
+    if($('zinMovement'))$('zinMovement').value='Recebimentos';
 
     zielPaintQueryResult();
     zielPaintIncoming();
@@ -650,7 +650,7 @@ function zielPaintQueryResult(){
     <div class="zin-query-total"><small>Total das entradas no período</small><strong class="g">${fmt(Number(q.period_gross_total||0))}</strong><span class="mini">Soma dos pagamentos aprovados, sem transferências</span></div>
     <div><small>Total líquido</small><strong>${fmt(Number(q.period_net_total??q.period_gross_total??0))}</strong><span class="mini">Após taxas/deduções informadas pelo Mercado Pago</span></div>
     <div><small>Taxas / deduções totais</small><strong class="r">${fmt(Number(q.period_fee_total||0))}</strong><span class="mini">Inclui cartão, parcelamento, impostos e demais deduções que reduzam o líquido</span></div>
-    <div><small>Novos movimentos</small><strong class="g">${Number(q.new_entries||0)}</strong></div>
+    <div><small>Novas entradas</small><strong class="g">${Number(q.new_entries||0)}</strong></div>
     <div><small>Já existentes / atualizadas</small><strong>${Number(q.updated_entries??q.already_existing??0)}</strong></div>
 
     <div><small>Aguardando liberação</small><strong class="a">${Number(q.awaiting_release||0)}</strong></div>
@@ -664,7 +664,7 @@ function zielPaintQueryResult(){
   if(showAll)showAll.onclick=()=>{
     if($('zinWalletFilter'))$('zinWalletFilter').value=q.wallet_id||'';
     if($('zinStatus'))$('zinStatus').value='Todos';
-    if($('zinMovement'))$('zinMovement').value='Todos';
+    if($('zinMovement'))$('zinMovement').value='Recebimentos';
     zielPaintIncoming();
   };
 
@@ -701,6 +701,7 @@ function zielPaintIncoming(){
 
   const visibleBase=zielIncomingRows.filter(row=>{
     if(row.wallet_id!==zielIncomingLastQuery.wallet_id)return false;
+    if(zielIncomingLastQuery.payments_only===true&&row.movement_kind==='transfer')return false;
     const key=zielIncomingDateKey(row.approved_at||row.occurred_at);
     return !!key&&key>=queryRange.from&&key<=queryRange.to;
   });
@@ -756,7 +757,7 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
             <span class="zin-auto-icon">⌕</span>
             <div>
               <strong>Consultar entradas do Mercado Pago</strong>
-              <p>Escolha a carteira e o dia ou período. O ZIEL busca recebimentos aprovados e transferências recebidas ou enviadas para sua conferência.</p>
+              <p>Escolha a carteira e o dia ou período. O ZIEL busca somente pagamentos recebidos e aprovados, sem misturar transferências no total de Entradas.</p>
             </div>
           </div>
           <span class="zin-manual-badge">MANUAL</span>
@@ -825,8 +826,8 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
         <div class="field">
           <label for="zinMovement">Tipo</label>
           <select id="zinMovement">
-            <option>Todos</option>
             <option>Recebimentos</option>
+            <option>Todos</option>
             <option>Transferências</option>
           </select>
         </div>
@@ -841,7 +842,7 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
 
       <div class="zin-duplicate-note">
         <strong>Proteção contra duplicidade</strong>
-        <span>Cada recebimento e cada transferência usam um ID externo único do Mercado Pago. Reconsultar o mesmo período atualiza o registro existente e o banco bloqueia uma segunda confirmação. Transferências entre suas próprias carteiras não alteram receita nem despesa.</span>
+        <span>Cada recebimento usa o ID único do Mercado Pago. Reconsultar o mesmo dia ou período apenas atualiza o mesmo registro; a confirmação é idempotente e o banco possui uma trava adicional que impede criar a mesma entrada duas vezes.</span>
       </div>
     </div>`;
 
