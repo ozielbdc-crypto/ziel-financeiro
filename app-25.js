@@ -641,7 +641,7 @@ async function zielRunIncomingQuery(){
 
     if($('zinWalletFilter'))$('zinWalletFilter').value=walletId;
     if($('zinStatus'))$('zinStatus').value='Todos';
-    if($('zinMovement'))$('zinMovement').value='Recebimentos';
+    if($('zinMovement'))$('zinMovement').value='Todos';
 
     zielPaintQueryResult();
     zielPaintIncoming();
