@@ -722,7 +722,7 @@ renderShell=function(){
   if(navEl&&!navEl.querySelector('[data-page="entradas-importadas"]')){
     const btn=document.createElement('button');
     btn.dataset.page='entradas-importadas';
-    btn.textContent='⇩ Entradas importadas';
+    btn.textContent='⇩ Entradas Mercado Pago';
     btn.onclick=()=>{showPage('entradas-importadas');document.body.classList.remove('menu-open');};
 
     const integrationsBtn=navEl.querySelector('[data-page="integracoes"]');
