@@ -94,3 +94,24 @@
 }
 .zin-transfer-note.pending-direction strong{color:#8b5d00}
 .zin-amount.a{color:var(--orange-dark)}
+
+
+/* Estado inicial da consulta manual */
+.zin-manual-empty{
+  display:grid;
+  gap:5px;
+  padding:28px 18px;
+  text-align:center;
+  border:1px dashed #cbd8e5;
+  border-radius:12px;
+  background:#fbfdff;
+  color:var(--muted)
+}
+.zin-manual-empty strong{
+  color:var(--navy2);
+  font-size:15px
+}
+.zin-manual-empty span{
+  font-size:12px;
+  line-height:1.55
+}
