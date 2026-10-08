@@ -55,6 +55,11 @@ function zielIncomingProviderStatusLabel(status,kind='payment'){
     canceled:'Cancelado',
     refunded:'Reembolsado',
     charged_back:'Estornado',
+    received:'Recebido',
+    confirmed:'Confirmado',
+    received_in_cash:'Recebido em dinheiro',
+    refund_requested:'Reembolso solicitado',
+    refund_in_progress:'Reembolso em andamento',
     withdrawal:'Transferência',
     payout:'Retirada',
     withdrawal_cancel:'Cancelamento de transferência'
@@ -91,7 +96,7 @@ function zielIncomingFeeItems(row){
     });
   }
   if(total>.004&&!items.length){
-    items.push({label:'Taxas / deduções Mercado Pago',amount:total});
+    items.push({label:'Taxas / deduções '+zielIncomingProviderLabel(row?.provider),amount:total});
   }
   return items;
 }
@@ -100,9 +105,12 @@ function zielIncomingFeeDetailsHtml(row,compact=false){
   const fee=Number(row?.fee_amount||0);
   if(fee<=.009)return '';
   const items=zielIncomingFeeItems(row);
+  const providerLabel=zielIncomingProviderLabel(row?.provider);
   const basis=row?.fee_basis==='net_received_amount'
-    ?'Total fechado pelo valor líquido efetivamente creditado pelo Mercado Pago.'
-    :'Total informado pelo detalhamento de taxas do Mercado Pago.';
+    ?'Total fechado pelo valor líquido efetivamente creditado pelo '+providerLabel+'.'
+    :row?.fee_basis==='net_value'
+      ?'Total fechado pelo valor líquido informado pelo '+providerLabel+'.'
+      :'Total informado pelo detalhamento de taxas do '+providerLabel+'.';
 
   return `<div class="zin-fee-breakdown ${compact?'compact':''}">
     <div class="zin-fee-breakdown-head">
@@ -188,7 +196,7 @@ function zielIncomingCard(row){
 
     ${!isTransfer&&fee>0.009?zielIncomingFeeDetailsHtml(row):''}
 
-    ${!released&&!isTransfer?`<div class="zin-release-warning"><strong>Pagamento aprovado, mas ainda não disponível na carteira.</strong><span>O ZIEL não permite lançar esse valor no saldo até a liberação do Mercado Pago. Consulte novamente depois.</span></div>`:''}
+    ${!released&&!isTransfer?`<div class="zin-release-warning"><strong>Pagamento aprovado, mas ainda não disponível na carteira.</strong><span>O ZIEL não permite lançar esse valor no saldo até a liberação do ${esc(zielIncomingProviderLabel(row.provider))}. Consulte novamente depois.</span></div>`:''}
 
     ${isTransfer?`<div class="zin-transfer-note ${!directionKnown?'pending-direction':''}"><strong>Transferência:</strong><span>${directionKnown
       ?`classifique se o dinheiro foi movimentado <b>entre suas próprias carteiras</b>, se foi uma ${direction==='Saída'?'<b>saída externa</b>':'<b>entrada externa</b>'}${direction==='Saída'?' ou se corresponde ao <b>pagamento de uma conta cadastrada</b>':''}. Transferências internas não alteram o resultado do negócio.`
@@ -417,7 +425,7 @@ function zielIncomingOpenConfirm(id){
   if(row.movement_kind==='transfer')return zielIncomingOpenTransferConfirm(id);
 
   if(row.available_for_balance===false){
-    return toast('Este pagamento ainda não foi liberado pelo Mercado Pago. Consulte novamente após a data de liberação.','error');
+    return toast('Este pagamento ainda não foi liberado pelo '+zielIncomingProviderLabel(row.provider)+'. Consulte novamente após a data de liberação.','error');
   }
 
   const wallet=state.wallets.find(w=>w.id===row.wallet_id);
@@ -435,7 +443,7 @@ function zielIncomingOpenConfirm(id){
       </div>
 
       ${isCard||fee>0.009?`<div class="zin-settlement-summary">
-        <div><small>Método</small><strong>${esc(row.payment_method||'Mercado Pago')}</strong></div>
+        <div><small>Método</small><strong>${esc(row.payment_method||zielIncomingProviderLabel(row.provider))}</strong></div>
         <div><small>Taxas/deduções totais</small><strong class="r">− ${fmt(fee)}</strong></div>
         <div><small>Líquido na carteira</small><strong class="g">${fmt(net)}</strong></div>
         <div><small>Data de liberação</small><strong>${esc(zielIncomingWhen(releaseWhen))}</strong></div>
@@ -450,7 +458,7 @@ function zielIncomingOpenConfirm(id){
 
       <div class="field">
         <label>Descrição do lançamento</label>
-        <input class="input" id="zinDescription" maxlength="160" value="${esc(row.description||'Entrada Mercado Pago')}" required>
+        <input class="input" id="zinDescription" maxlength="160" value="${esc(row.description||('Entrada '+zielIncomingProviderLabel(row.provider)))}" required>
       </div>
 
       <div class="zin-confirm-note">
@@ -778,10 +786,10 @@ function zielPaintQueryResult(){
   host.innerHTML=`<div class="zin-query-summary">
     <div><small>Provedor</small><strong>${esc(zielIncomingProviderLabel(q.provider||'mercado_pago'))}</strong></div>
     <div><small>Período consultado</small><strong>${esc(br(q.date_from))}${q.date_from!==q.date_to?' até '+esc(br(q.date_to)):''}</strong></div>
-    <div><small>Recebimentos aprovados</small><strong>${Number(q.payments_found||0)}</strong></div>
+    <div><small>Recebimentos encontrados</small><strong>${Number(q.payments_found||0)}</strong></div>
     <div><small>Transferências encontradas</small><strong>${Number(q.transfers_found||0)}</strong><span class="mini">Separadas das receitas</span></div>
     <div class="zin-query-total"><small>${q.date_from===q.date_to?'Total recebido do dia':'Total recebido no período'}</small><strong class="g">${fmt(Number(q.period_gross_total||0))}</strong><span class="mini">Somente recebimentos aprovados; transferências não entram neste total</span></div>
-    <div><small>Total líquido</small><strong>${fmt(Number(q.period_net_total??q.period_gross_total??0))}</strong><span class="mini">Após taxas/deduções informadas pelo Mercado Pago</span></div>
+    <div><small>Total líquido</small><strong>${fmt(Number(q.period_net_total??q.period_gross_total??0))}</strong><span class="mini">Após taxas/deduções informadas pelo ${esc(zielIncomingProviderLabel(q.provider||'mercado_pago'))}</span></div>
     <div><small>Taxas / deduções totais</small><strong class="r">${fmt(Number(q.period_fee_total||0))}</strong><span class="mini">Inclui cartão, parcelamento, impostos e demais deduções que reduzam o líquido</span></div>
     <div><small>Novos movimentos</small><strong class="g">${Number(q.new_entries||0)}</strong></div>
     <div><small>Já existentes / atualizados</small><strong>${Number(q.updated_entries??q.already_existing??0)}</strong></div>
@@ -793,7 +801,7 @@ function zielPaintQueryResult(){
     <button type="button" class="btn btn-soft" id="zinShowReceiptsQuery">Só recebimentos</button>
     <button type="button" class="btn btn-soft" id="zinShowTransfersQuery">Só transferências</button>
   </div>
-  <p class="mini">A consulta traz <b>recebimentos e transferências</b>, mas mantém os tipos separados. Os mesmos IDs do Mercado Pago são atualizados e <b>não criam duplicidade</b>. Transferências nunca entram no total de receitas.${Number(q.verification_passes||1)>1?' O botão faz duas leituras internas de conferência no mesmo clique e consolida tudo pelo ID único do pagamento.':''}</p>`;
+  <p class="mini">A consulta traz <b>recebimentos e transferências</b>, mas mantém os tipos separados. Os mesmos IDs do ${esc(zielIncomingProviderLabel(q.provider||'mercado_pago'))} são atualizados e <b>não criam duplicidade</b>. Transferências nunca entram no total de receitas.${Number(q.verification_passes||1)>1?' O botão faz duas leituras internas de conferência no mesmo clique e consolida tudo pelo ID único do pagamento.':''}</p>`;
 
   const applyView=movement=>{
     if($('zinWalletFilter'))$('zinWalletFilter').value=q.wallet_id||'';
