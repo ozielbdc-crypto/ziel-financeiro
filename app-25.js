@@ -687,12 +687,24 @@ async function zielRunIncomingQuery(){
       ?'wallet-integration-query-lytex'
       :'wallet-integration-query';
 
+    const reusableSettlementTask=
+      provider==='mercado_pago'&&
+      zielIncomingLastQuery?.wallet_id===walletId&&
+      zielIncomingLastQuery?.provider===provider&&
+      zielIncomingLastQuery?.date_from===from&&
+      zielIncomingLastQuery?.date_to===to&&
+      zielIncomingLastQuery?.transfers_pending===true&&
+      zielIncomingLastQuery?.transfer_task_id
+        ?String(zielIncomingLastQuery.transfer_task_id)
+        :'';
+
     const {data,error}=await supabase.functions.invoke(functionName,{
       body:{
         wallet_id:walletId,
         date_from:from,
         date_to:to,
-        payments_only:provider==='lytex'?true:false
+        payments_only:provider==='lytex'?true:false,
+        settlement_task_id:reusableSettlementTask||undefined
       }
     });
 
@@ -760,7 +772,10 @@ async function zielRunIncomingQuery(){
   }finally{
     zielIncomingQueryInFlight=false;
     zielIncomingPaintWallet();
-    if($('zinQueryButton'))$('zinQueryButton').textContent='Consultar movimentações';
+    if($('zinQueryButton'))$('zinQueryButton').textContent=
+      zielIncomingLastQuery?.transfers_pending&&zielIncomingLastQuery?.transfer_task_id
+        ?'Consultar novamente'
+        :'Consultar movimentações';
   }
 }
 
@@ -791,6 +806,7 @@ function zielPaintQueryResult(){
     <div><small>Aguardando liberação</small><strong class="a">${Number(q.awaiting_release||0)}</strong></div>
   </div>
   ${q.transfer_warning?`<div class="message error">${esc(q.transfer_warning)}</div>`:''}
+  ${q.transfers_pending&&q.transfer_task_id?`<div class="zin-report-pending"><strong>Relatório em processamento.</strong> Ao clicar em <b>Consultar novamente</b>, o ZIEL continuará acompanhando o mesmo relatório do Mercado Pago; não iniciará outro do zero.</div>`:''}
   <p class="mini">A consulta é manual e não lança nada sozinha. Recebimentos e transferências usam <b>provedor + ID externo</b>; reconsultar o mesmo período atualiza o mesmo registro e não cria duplicidade.</p>`;
 }
 
