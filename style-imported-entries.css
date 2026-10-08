@@ -330,3 +330,27 @@
   .zlive-net-grid{grid-template-columns:1fr}
   .zlive-live-badge{align-self:flex-start}
 }
+
+/* Identificação da origem Pix */
+.zin-pix-channel{
+  display:inline-flex;
+  align-items:center;
+  padding:4px 8px;
+  border-radius:999px;
+  font-size:10px;
+  font-weight:800;
+  line-height:1.2;
+  border:1px solid #d7e3ef;
+  background:#f3f7fb;
+  color:#31556f
+}
+.zin-pix-channel.direct{
+  border-color:#f1c89f;
+  background:#fff3e7;
+  color:#9b4d06
+}
+.zin-pix-channel.qr{
+  border-color:#cfe0ef;
+  background:#edf5fb;
+  color:#245a8d
+}
