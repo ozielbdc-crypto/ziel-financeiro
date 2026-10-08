@@ -583,7 +583,7 @@ function zielIncomingProviderOptions(selected=''){
 }
 
 function zielIncomingProviderSupported(provider){
-  return provider==='mercado_pago';
+  return ['mercado_pago','asaas'].includes(provider);
 }
 
 function zielIncomingPaintProvider(){
@@ -683,20 +683,22 @@ async function zielRunIncomingQuery(){
   };
 
   try{
-    // O Mercado Pago pode devolver tipos de pagamento em momentos diferentes
-    // na busca do mesmo período. Para que o usuário clique apenas uma vez,
-    // fazemos duas leituras internas e consolidamos pelo ID único armazenado no banco.
+    // Mercado Pago recebe uma segunda leitura interna de validação. No Asaas,
+    // uma consulta paginada do período já é suficiente.
     const first=await invoke();
+    let second=first;
+    let verificationPasses=1;
+    let totalNew=Number(first.new_entries||0);
 
-    if($('zinQueryButton')){
-      $('zinQueryButton').textContent='Validando recebimentos…';
+    if(provider==='mercado_pago'){
+      if($('zinQueryButton'))$('zinQueryButton').textContent='Validando recebimentos…';
+      second=await invoke();
+      verificationPasses=2;
+      totalNew+=Number(second.new_entries||0);
     }
 
-    const second=await invoke();
-
-    // Recarrega o que efetivamente ficou salvo após as duas leituras.
-    // A tabela possui UNIQUE(owner_id, provider, external_id), então o mesmo
-    // pagamento nunca é contado duas vezes ao consolidar o período.
+    // Recarrega o que efetivamente ficou salvo. O banco usa
+    // UNIQUE(owner_id, provider, external_id) para impedir duplicidade.
     await zielLoadIncomingEntries();
 
     const periodRows=zielIncomingRows.filter(row=>{
@@ -734,9 +736,9 @@ async function zielRunIncomingQuery(){
       period_net_total:Math.round(netTotal*100)/100,
       period_fee_total:Math.round(feeTotal*100)/100,
       awaiting_release:awaiting,
-      new_entries:Number(first.new_entries||0)+Number(second.new_entries||0),
+      new_entries:totalNew,
       updated_entries:Number(second.updated_entries??second.already_existing??0),
-      verification_passes:2,
+      verification_passes:verificationPasses,
       transfer_warning:second.transfer_warning||null
     };
 
@@ -1005,7 +1007,9 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
     if(seq!==zielIncomingRenderSeq)return;
 
     const providers=zielIncomingQueryableProviders();
-    const defaultProvider=providers.includes('mercado_pago')?'mercado_pago':(providers[0]||'');
+    const defaultProvider=providers.find(p=>
+      zielIncomingProviderSupported(p)&&zielIncomingIntegrations.some(i=>i.provider===p&&i.enabled!==false)
+    )||(providers[0]||'');
 
     $('zinQueryProvider').innerHTML=providers.length
       ?zielIncomingProviderOptions(defaultProvider)
