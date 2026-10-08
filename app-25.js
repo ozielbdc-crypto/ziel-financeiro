@@ -4,6 +4,7 @@ let zielIncomingRows=[];
 let zielIncomingRenderSeq=0;
 let zielIncomingIntegrations=[];
 let zielIncomingLastQuery=null;
+let zielIncomingQueryInFlight=false;
 
 function zielIncomingProviderLabel(provider){
   return {
@@ -582,6 +583,8 @@ function zielIncomingQueryDates(){
 }
 
 async function zielRunIncomingQuery(){
+  if(zielIncomingQueryInFlight)return;
+
   const walletId=$('zinQueryWallet').value;
   if(!walletId)return toast('Selecione uma carteira integrada ao Mercado Pago.','error');
 
@@ -596,10 +599,11 @@ async function zielRunIncomingQuery(){
   if(days>365)return toast('Consulte no máximo 366 dias por vez.','error');
 
   const btn=$('zinQueryButton');
+  zielIncomingQueryInFlight=true;
   btn.disabled=true;
   btn.textContent='Consultando entradas…';
 
-  try{
+  const invoke=async()=>{
     const {data,error}=await supabase.functions.invoke('wallet-integration-query',{
       body:{
         wallet_id:walletId,
@@ -612,8 +616,27 @@ async function zielRunIncomingQuery(){
 
     if(error)throw new Error(error.message||'Falha ao consultar o backend.');
     if(!data?.ok)throw new Error(data?.error||'A consulta não foi concluída.');
+    return data;
+  };
 
-    zielIncomingLastQuery=data;
+  try{
+    // Primeira passagem: busca e grava os pagamentos retornados pelo provedor.
+    const first=await invoke();
+
+    // Segunda passagem automática: confirma o mesmo período antes de atualizar a tela.
+    // O usuário não precisa mais clicar duas vezes. Como o banco usa o ID único do
+    // Mercado Pago, esta verificação apenas insere o que faltou ou atualiza o mesmo registro.
+    btn.textContent='Verificando consulta…';
+    await new Promise(resolve=>setTimeout(resolve,250));
+    const second=await invoke();
+
+    zielIncomingLastQuery={
+      ...second,
+      new_entries:Number(first.new_entries||0)+Number(second.new_entries||0),
+      payments_new:Number(first.payments_new||0)+Number(second.payments_new||0),
+      verification_passes:2
+    };
+
     await zielLoadIncomingEntries();
 
     if($('zinWalletFilter'))$('zinWalletFilter').value=walletId;
@@ -623,10 +646,15 @@ async function zielRunIncomingQuery(){
     zielPaintQueryResult();
     zielPaintIncoming();
 
-    toast('Consulta concluída: '+Number(data.new_entries||0)+' nova(s), '+Number(data.updated_entries||0)+' atualizada(s).');
+    toast(
+      'Consulta concluída em uma única ação: '+
+      Number(zielIncomingLastQuery.new_entries||0)+' nova(s), '+
+      Number(second.updated_entries||0)+' existente(s)/atualizada(s).'
+    );
   }catch(error){
     toast('Consulta falhou: '+(error?.message||'erro desconhecido'),'error');
   }finally{
+    zielIncomingQueryInFlight=false;
     if($('zinQueryButton')){
       $('zinQueryButton').disabled=false;
       $('zinQueryButton').textContent='Consultar entradas';
@@ -658,7 +686,7 @@ function zielPaintQueryResult(){
   <div class="zin-query-shortcuts">
     <button type="button" class="btn btn-soft" id="zinShowAllQuery">Ver entradas do período</button>
   </div>
-  <p class="mini">Esta consulta manual traz somente <b>pagamentos recebidos e aprovados</b>. Reconsultar o mesmo dia ou período atualiza os mesmos IDs do Mercado Pago e <b>não cria duplicidade</b>.</p>`;
+  <p class="mini">Esta consulta manual traz somente <b>pagamentos recebidos e aprovados</b>. Um único clique faz a busca e uma verificação automática do mesmo período. Os mesmos IDs do Mercado Pago são atualizados e <b>não criam duplicidade</b>.</p>`;
 
   const showAll=$('zinShowAllQuery');
   if(showAll)showAll.onclick=()=>{
