@@ -895,36 +895,3 @@ input[type="number"]::-webkit-inner-spin-button{
   min-height:36px;
   font-size:11px
 }
-
-
-/* Pagador nas entradas importadas */
-.zin-payer-highlight{
-  display:grid;
-  gap:4px;
-  padding:11px 12px;
-  border:1px solid #dce7f0;
-  border-left:4px solid var(--orange);
-  border-radius:9px;
-  background:#fff9f3
-}
-.zin-payer-highlight small{
-  font-size:9px;
-  font-weight:800;
-  letter-spacing:.04em;
-  color:var(--muted)
-}
-.zin-payer-highlight strong{
-  font-size:15px;
-  color:var(--navy2);
-  overflow-wrap:anywhere
-}
-
-/* Documento mascarado do pagador */
-.zin-payer-highlight span{
-  font-size:11px;
-  font-weight:700;
-  color:#6b4a2c;
-}
-.zin-payer-card{
-  margin:2px 0 0;
-}
