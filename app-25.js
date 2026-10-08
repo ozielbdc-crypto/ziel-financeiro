@@ -85,6 +85,7 @@ function zielIncomingCard(row){
   const directionKnown=!isTransfer||direction==='Entrada'||direction==='Saída';
   const isCard=!isTransfer&&['credit_card','debit_card','prepaid_card'].includes(String(row.payment_type_id||'').toLowerCase());
   const released=row.available_for_balance!==false;
+  const linkedPayable=row.linked_payable_id?(state.payables||[]).find(p=>p.id===row.linked_payable_id):null;
   let actions='';
 
   if(row.decision_status==='Pendente'){
@@ -145,8 +146,10 @@ function zielIncomingCard(row){
     ${!released&&!isTransfer?`<div class="zin-release-warning"><strong>Pagamento aprovado, mas ainda não disponível na carteira.</strong><span>O ZIEL não permite lançar esse valor no saldo até a liberação do Mercado Pago. Consulte novamente depois.</span></div>`:''}
 
     ${isTransfer?`<div class="zin-transfer-note ${!directionKnown?'pending-direction':''}"><strong>Transferência:</strong><span>${directionKnown
-      ?`classifique se o dinheiro foi movimentado <b>entre suas próprias carteiras</b> ou se foi uma ${direction==='Saída'?'<b>saída externa</b>':'<b>entrada externa</b>'}. Transferências internas não alteram o resultado do negócio.`
+      ?`classifique se o dinheiro foi movimentado <b>entre suas próprias carteiras</b>, se foi uma ${direction==='Saída'?'<b>saída externa</b>':'<b>entrada externa</b>'}${direction==='Saída'?' ou se corresponde ao <b>pagamento de uma conta cadastrada</b>':''}. Transferências internas não alteram o resultado do negócio.`
       :'<b>direção ainda não confirmada pelo provedor.</b> O ZIEL não presume entrada ou saída. Consulte novamente o mesmo período para o relatório de saldo identificar o impacto real antes de lançar.'}</span></div>`:''}
+
+    ${linkedPayable?`<div class="zin-linked-payable"><strong>Conta a pagar vinculada</strong><span>${esc(linkedPayable.supplier||'Fornecedor')} · ${esc(linkedPayable.description||'Conta')} · ${fmt(Number(linkedPayable.amount||0))}</span></div>`:''}
 
     <div class="zin-foot">
       <div>${zielIncomingStatusBadge(row.decision_status)}</div>
@@ -171,6 +174,8 @@ function zielIncomingOpenTransferConfirm(id){
 
   const incoming=direction==='Entrada';
   const amount=Number(row.amount||0);
+  const movementDate=zielIncomingDateKey(row.approved_at||row.occurred_at||row.imported_at)||iso();
+
   const counterpartWallets=(state.wallets||[])
     .filter(w=>w.active!==false&&w.id!==wallet.id)
     .sort((a,b)=>{
@@ -180,6 +185,24 @@ function zielIncomingOpenTransferConfirm(id){
 
   const walletChoices='<option value="">Selecione a carteira</option>'+
     counterpartWallets.map(w=>`<option value="${esc(w.id)}">${esc(businessName(w.business_id))} — ${esc(w.name)}</option>`).join('');
+
+  const openPayables=incoming?[]:(state.payables||[])
+    .filter(p=>p.business_id===row.business_id&&Number(p.amount||0)-Number(p.paid_amount||0)>.009)
+    .map(p=>({
+      ...p,
+      open_amount:Math.round((Number(p.amount||0)-Number(p.paid_amount||0))*100)/100
+    }))
+    .sort((a,b)=>{
+      const amountDiff=Math.abs(a.open_amount-amount)-Math.abs(b.open_amount-amount);
+      if(Math.abs(amountDiff)>.009)return amountDiff;
+      const ad=Math.abs(new Date((a.due_date||movementDate)+'T12:00:00').getTime()-new Date(movementDate+'T12:00:00').getTime());
+      const bd=Math.abs(new Date((b.due_date||movementDate)+'T12:00:00').getTime()-new Date(movementDate+'T12:00:00').getTime());
+      return ad-bd;
+    });
+
+  const exactPayables=openPayables.filter(p=>Math.abs(p.open_amount-amount)<.01);
+  const payableChoices='<option value="">Selecione a conta a pagar</option>'+
+    openPayables.map((p,i)=>`<option value="${esc(p.id)}" ${i===0&&exactPayables.length?'selected':''}>${esc(p.supplier||p.description||'Conta')} — vence ${esc(br(p.due_date))} — aberto ${fmt(p.open_amount)}</option>`).join('');
 
   modal(incoming?'Classificar transferência recebida':'Classificar transferência enviada',`
     <form id="zinTransferForm" class="zin-confirm-form">
@@ -192,8 +215,10 @@ function zielIncomingOpenTransferConfirm(id){
         <label>Como classificar este movimento?</label>
         <select id="zinTransferMode">
           <option value="transfer">${incoming?'Veio de outra carteira minha':'Foi para outra carteira minha'}</option>
+          ${!incoming?'<option value="payable">Pagamento de uma conta cadastrada</option>':''}
           <option value="${incoming?'income':'expense'}">${incoming?'Entrada externa':'Saída externa / retirada / despesa'}</option>
         </select>
+        ${!incoming&&exactPayables.length?`<div class="zin-payable-suggestion"><strong>Sugestão:</strong> há ${exactPayables.length} conta${exactPayables.length===1?'':'s'} em aberto com exatamente ${fmt(amount)}.</div>`:''}
       </div>
 
       <div class="field" id="zinTransferDestinationWrap">
@@ -202,13 +227,19 @@ function zielIncomingOpenTransferConfirm(id){
         <div class="mini">Use esta opção quando o dinheiro apenas mudou de uma carteira sua para outra. Isso não vira receita nem despesa.</div>
       </div>
 
+      ${!incoming?`<div class="field hidden" id="zinTransferPayableWrap">
+        <label>Conta a pagar</label>
+        <select id="zinTransferPayable">${payableChoices}</select>
+        <div id="zinTransferPayableInfo" class="zin-payable-info">${openPayables.length?'Selecione a conta que originou esta saída.':'Não há contas em aberto neste negócio.'}</div>
+      </div>`:''}
+
       <div class="field hidden" id="zinTransferCategoryWrap">
         <label>Categoria da ${incoming?'entrada':'saída'}</label>
         <select id="zinTransferCategory">${categoryOptions(incoming?'Entrada':'Saída')}</select>
-        <div class="mini">Use somente quando a movimentação não veio de / não foi para outra carteira controlada no ZIEL.</div>
+        <div class="mini">Use somente quando a movimentação não veio de / não foi para outra carteira controlada no ZIEL e não corresponde a uma conta já cadastrada.</div>
       </div>
 
-      <div class="field">
+      <div class="field" id="zinTransferDescriptionWrap">
         <label>Descrição</label>
         <input class="input" id="zinTransferDescription" maxlength="160" value="${esc(row.description||(incoming?'Transferência recebida Mercado Pago':'Transferência enviada Mercado Pago'))}" required>
       </div>
@@ -221,17 +252,54 @@ function zielIncomingOpenTransferConfirm(id){
       </div>
     </form>`);
 
+  const selectedPayable=()=>openPayables.find(p=>p.id===$('zinTransferPayable')?.value)||null;
+
+  const paintPayable=()=>{
+    const host=$('zinTransferPayableInfo');
+    if(!host)return;
+    const p=selectedPayable();
+    if(!p){
+      host.innerHTML=openPayables.length?'Selecione a conta que originou esta saída.':'Não há contas em aberto neste negócio.';
+      return;
+    }
+    const after=Math.round((p.open_amount-amount)*100)/100;
+    const tooLarge=amount>p.open_amount+.009;
+    const partial=amount<p.open_amount-.009;
+    host.innerHTML=`<div class="zin-payable-match ${tooLarge?'error':partial?'partial':'ok'}">
+      <div><small>Fornecedor</small><strong>${esc(p.supplier||'—')}</strong></div>
+      <div><small>Descrição</small><strong>${esc(p.description||'—')}</strong></div>
+      <div><small>Vencimento</small><strong>${esc(br(p.due_date))}</strong></div>
+      <div><small>Saldo em aberto</small><strong>${fmt(p.open_amount)}</strong></div>
+      <div><small>Transferência</small><strong>${fmt(amount)}</strong></div>
+      <div><small>Após a baixa</small><strong class="${tooLarge?'r':''}">${tooLarge?'Transferência maior que a conta':partial?fmt(after):'Quitada'}</strong></div>
+    </div>`;
+  };
+
   const paint=()=>{
     const mode=$('zinTransferMode').value;
     const internal=mode==='transfer';
+    const payableMode=mode==='payable';
     $('zinTransferDestinationWrap').classList.toggle('hidden',!internal);
-    $('zinTransferCategoryWrap').classList.toggle('hidden',internal);
+    $('zinTransferCategoryWrap').classList.toggle('hidden',internal||payableMode);
+    if($('zinTransferPayableWrap'))$('zinTransferPayableWrap').classList.toggle('hidden',!payableMode);
+    $('zinTransferDescriptionWrap').classList.toggle('hidden',payableMode);
+
+    if(payableMode){
+      paintPayable();
+      const p=selectedPayable();
+      $('zinTransferNote').innerHTML=p
+        ?`O ZIEL usará esta movimentação do Mercado Pago para <b>baixar a conta já cadastrada</b>. Não será criada uma segunda despesa. Se o valor for menor que o saldo em aberto, a baixa será parcial. O ID externo <b>${esc(row.external_id||'—')}</b> ficará vinculado e não poderá ser utilizado novamente.`
+        :`Selecione uma conta em aberto. O ZIEL não criará uma nova despesa: esta saída será vinculada diretamente à conta escolhida.`;
+      return;
+    }
+
     $('zinTransferNote').innerHTML=internal
       ?`O ZIEL criará uma <b>Transferência</b> entre as duas carteiras. O resultado financeiro não será alterado. O ID externo <b>${esc(row.external_id||'—')}</b> continuará vinculado para impedir duplicidade.`
       :`O ZIEL criará uma <b>${incoming?'Entrada':'Saída'}</b> normal em Lançamentos. O ID externo <b>${esc(row.external_id||'—')}</b> impede que este movimento seja confirmado duas vezes.`;
   };
 
   $('zinTransferMode').onchange=paint;
+  if($('zinTransferPayable'))$('zinTransferPayable').onchange=()=>{paintPayable();paint();};
   $('zinTransferCancel').onclick=closeModal;
   paint();
 
@@ -239,36 +307,55 @@ function zielIncomingOpenTransferConfirm(id){
     e.preventDefault();
     const mode=$('zinTransferMode').value;
     const internal=mode==='transfer';
-    const category=internal?null:$('zinTransferCategory').value;
+    const payableMode=mode==='payable';
+    const category=internal||payableMode?null:$('zinTransferCategory').value;
     const counterpart=internal?$('zinTransferCounterpart').value:null;
-    const description=$('zinTransferDescription').value.trim();
+    const description=payableMode?'':$('zinTransferDescription').value.trim();
+    const payable=payableMode?selectedPayable():null;
 
     if(internal&&!counterpart)return toast('Selecione a outra carteira da transferência.','error');
-    if(!internal&&!category)return toast('Selecione a categoria.','error');
-    if(!description)return toast('Informe a descrição.','error');
+    if(payableMode&&!payable)return toast('Selecione a conta a pagar correspondente.','error');
+    if(payableMode&&amount>payable.open_amount+.009)return toast('A transferência é maior que o saldo em aberto da conta selecionada.','error');
+    if(!internal&&!payableMode&&!category)return toast('Selecione a categoria.','error');
+    if(!payableMode&&!description)return toast('Informe a descrição.','error');
 
     const btn=$('zinTransferConfirm');
     btn.disabled=true;
     btn.textContent='Lançando…';
 
     try{
-      const {data,error}=await supabase.rpc('confirm_imported_transfer',{
-        p_entry_id:row.id,
-        p_mode:mode,
-        p_category:category,
-        p_description:description,
-        p_destination_wallet:counterpart
-      });
+      let data,error;
+
+      if(payableMode){
+        ({data,error}=await supabase.rpc('confirm_imported_transfer_payable',{
+          p_entry_id:row.id,
+          p_payable_id:payable.id
+        }));
+      }else{
+        ({data,error}=await supabase.rpc('confirm_imported_transfer',{
+          p_entry_id:row.id,
+          p_mode:mode,
+          p_category:category,
+          p_description:description,
+          p_destination_wallet:counterpart
+        }));
+      }
+
       if(error)throw error;
       if(!data)throw new Error('O lançamento não retornou um identificador válido.');
+
+      const wasPartial=payableMode&&amount<payable.open_amount-.009;
 
       closeModal();
       await loadAll();
       await zielLoadIncomingEntries();
       zielPaintIncoming();
-      toast(internal
-        ?'Transferência vinculada entre carteiras sem alterar o resultado.'
-        :(incoming?'Entrada lançada em Lançamentos.':'Saída lançada em Lançamentos.'));
+
+      toast(payableMode
+        ?(wasPartial?'Pagamento parcial vinculado à conta a pagar.':'Conta a pagar quitada com a movimentação do Mercado Pago.')
+        :internal
+          ?'Transferência vinculada entre carteiras sem alterar o resultado.'
+          :(incoming?'Entrada lançada em Lançamentos.':'Saída lançada em Lançamentos.'));
     }catch(error){
       toast('Não foi possível lançar: '+(error?.message||'erro desconhecido'),'error');
       if($('zinTransferConfirm')){
