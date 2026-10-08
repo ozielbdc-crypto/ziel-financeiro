@@ -179,7 +179,7 @@ function zielIncomingCard(row){
       <div><small>${isTransfer?'Data do movimento':'Data de aprovação'}</small><strong>${esc(zielIncomingWhen(when))}</strong></div>
       <div><small>${isTransfer?'Tipo no provedor':'Status no provedor'}</small><strong>${esc(zielIncomingProviderStatusLabel(row.provider_transaction_type||row.provider_status||'—',isTransfer?'transfer':'payment'))}</strong></div>
       <div><small>Método</small><strong>${esc(row.payment_method||'—')}</strong></div>
-      <div><small>ID Mercado Pago</small><strong>${esc(row.provider_source_id||row.external_id||'—')}</strong></div>
+      <div><small>ID ${esc(zielIncomingProviderLabel(row.provider))}</small><strong>${esc(row.provider_source_id||row.external_id||'—')}</strong></div>
       ${isCard?`<div><small>Parcelas</small><strong>${Number(row.installments||1)}x</strong></div>`:''}
       ${!isTransfer&&fee>0.009?`<div><small>Taxas/deduções totais</small><strong class="r">− ${fmt(fee)}</strong></div>
       <div><small>Valor líquido</small><strong class="g">${fmt(net)}</strong></div>`:''}
@@ -253,7 +253,7 @@ function zielIncomingOpenTransferConfirm(id){
     <form id="zinTransferForm" class="zin-confirm-form">
       <div class="zin-confirm-summary">
         <div><small>${incoming?'VALOR RECEBIDO':'VALOR ENVIADO'}</small><strong class="${incoming?'g':'r'}">${incoming?'+ ':'− '}${fmt(amount)}</strong></div>
-        <div><small>CARTEIRA MERCADO PAGO</small><strong>${esc(wallet.name)}</strong><span>${esc(businessName(wallet.business_id))}</span></div>
+        <div><small>CARTEIRA DE ORIGEM</small><strong>${esc(wallet.name)}</strong><span>${esc(businessName(wallet.business_id))}</span></div>
       </div>
 
       <div class="field">
@@ -546,12 +546,14 @@ async function zielLoadIncomingEntries(){
 async function zielLoadIncomingIntegrations(){
   const {data,error}=await supabase.rpc('list_wallet_integrations');
   if(error)throw error;
-  zielIncomingIntegrations=(Array.isArray(data)?data:[]).filter(i=>i.enabled!==false&&i.provider==='mercado_pago');
+  zielIncomingIntegrations=(Array.isArray(data)?data:[]).filter(i=>i.enabled!==false);
   return zielIncomingIntegrations;
 }
 
-function zielIncomingConfiguredWallets(){
-  const walletIds=new Set(zielIncomingIntegrations.map(i=>i.wallet_id));
+function zielIncomingConfiguredWallets(provider=''){
+  const walletIds=new Set(zielIncomingIntegrations
+    .filter(i=>!provider||i.provider===provider)
+    .map(i=>i.wallet_id));
   return (state.wallets||[])
     .filter(w=>w.active!==false&&walletIds.has(w.id)&&(!state.businessFilter||w.business_id===state.businessFilter))
     .sort((a,b)=>{
@@ -560,9 +562,59 @@ function zielIncomingConfiguredWallets(){
     });
 }
 
-function zielIncomingWalletOptions(selected=''){
-  const wallets=zielIncomingConfiguredWallets();
+function zielIncomingWalletOptions(selected='',provider=''){
+  const wallets=zielIncomingConfiguredWallets(provider);
   return wallets.map(w=>`<option value="${esc(w.id)}" ${w.id===selected?'selected':''}>${esc(businessName(w.business_id))} — ${esc(w.name)}</option>`).join('');
+}
+
+function zielIncomingQueryableProviders(){
+  const providers=[...new Set(zielIncomingIntegrations.map(i=>i.provider).filter(Boolean))];
+  const order=['mercado_pago','asaas','efi','lytex','sgp','outro'];
+  return providers.sort((a,b)=>{
+    const ai=order.indexOf(a),bi=order.indexOf(b);
+    return (ai<0?999:ai)-(bi<0?999:bi)||String(a).localeCompare(String(b),'pt-BR');
+  });
+}
+
+function zielIncomingProviderOptions(selected=''){
+  const providers=zielIncomingQueryableProviders();
+  return providers.map(provider=>`<option value="${esc(provider)}" ${provider===selected?'selected':''}>${esc(zielIncomingProviderLabel(provider))}</option>`).join('');
+}
+
+function zielIncomingProviderSupported(provider){
+  return provider==='mercado_pago';
+}
+
+function zielIncomingPaintProvider(){
+  const provider=$('zinQueryProvider')?.value||'';
+  const wallets=zielIncomingConfiguredWallets(provider);
+  const walletSelect=$('zinQueryWallet');
+  const queryButton=$('zinQueryButton');
+  const note=$('zinProviderNote');
+
+  if(walletSelect){
+    const previous=walletSelect.value;
+    walletSelect.innerHTML=wallets.length
+      ?zielIncomingWalletOptions(wallets.some(w=>w.id===previous)?previous:'',provider)
+      :'<option value="">Nenhuma carteira integrada a este provedor</option>';
+    walletSelect.disabled=!wallets.length;
+  }
+
+  const supported=zielIncomingProviderSupported(provider);
+  if(queryButton)queryButton.disabled=!wallets.length||!supported;
+
+  if(note){
+    if(!provider){
+      note.textContent='Selecione uma instituição / provedor.';
+      note.className='mini';
+    }else if(!supported){
+      note.textContent=zielIncomingProviderLabel(provider)+' está configurado, mas o conector de consulta ainda não foi ativado.';
+      note.className='mini r';
+    }else{
+      note.textContent='Consulta disponível para '+zielIncomingProviderLabel(provider)+'.';
+      note.className='mini g';
+    }
+  }
 }
 
 function zielIncomingPaintDateMode(){
@@ -585,8 +637,14 @@ function zielIncomingQueryDates(){
 async function zielRunIncomingQuery(){
   if(zielIncomingQueryInFlight)return;
 
+  const provider=$('zinQueryProvider')?.value||'';
+  if(!provider)return toast('Selecione a instituição / provedor.','error');
+  if(!zielIncomingProviderSupported(provider)){
+    return toast('A consulta de '+zielIncomingProviderLabel(provider)+' ainda não está disponível.','error');
+  }
+
   const walletId=$('zinQueryWallet').value;
-  if(!walletId)return toast('Selecione uma carteira integrada ao Mercado Pago.','error');
+  if(!walletId)return toast('Selecione uma carteira integrada a '+zielIncomingProviderLabel(provider)+'.','error');
 
   const {from,to}=zielIncomingQueryDates();
   if(!from||!to)return toast('Informe a data ou período da consulta.','error');
@@ -607,7 +665,7 @@ async function zielRunIncomingQuery(){
     const {data,error}=await supabase.functions.invoke('wallet-integration-query',{
       body:{
         wallet_id:walletId,
-        provider:'mercado_pago',
+        provider,
         date_from:from,
         date_to:to,
         payments_only:false
@@ -637,7 +695,7 @@ async function zielRunIncomingQuery(){
     await zielLoadIncomingEntries();
 
     const periodRows=zielIncomingRows.filter(row=>{
-      if(row.wallet_id!==walletId)return false;
+      if(row.wallet_id!==walletId||row.provider!==provider)return false;
       const key=zielIncomingDateKey(row.approved_at||row.occurred_at);
       return !!key&&key>=from&&key<=to;
     });
@@ -661,6 +719,7 @@ async function zielRunIncomingQuery(){
     zielIncomingLastQuery={
       ...second,
       wallet_id:walletId,
+      provider,
       date_from:from,
       date_to:to,
       payments_only:false,
@@ -705,11 +764,12 @@ function zielPaintQueryResult(){
 
   const q=zielIncomingLastQuery;
   if(!q){
-    host.innerHTML='<div class="zin-query-empty">Escolha a carteira e a data para consultar recebimentos e transferências do Mercado Pago.</div>';
+    host.innerHTML='<div class="zin-query-empty">Escolha o provedor, a carteira e a data para consultar os movimentos.</div>';
     return;
   }
 
   host.innerHTML=`<div class="zin-query-summary">
+    <div><small>Provedor</small><strong>${esc(zielIncomingProviderLabel(q.provider||'mercado_pago'))}</strong></div>
     <div><small>Período consultado</small><strong>${esc(br(q.date_from))}${q.date_from!==q.date_to?' até '+esc(br(q.date_to)):''}</strong></div>
     <div><small>Recebimentos aprovados</small><strong>${Number(q.payments_found||0)}</strong></div>
     <div><small>Transferências encontradas</small><strong>${Number(q.transfers_found||0)}</strong><span class="mini">Separadas das receitas</span></div>
@@ -774,6 +834,7 @@ function zielPaintIncoming(){
 
   const visibleBase=zielIncomingRows.filter(row=>{
     if(row.wallet_id!==zielIncomingLastQuery.wallet_id)return false;
+    if(zielIncomingLastQuery.provider&&row.provider!==zielIncomingLastQuery.provider)return false;
     if(zielIncomingLastQuery.payments_only===true&&row.movement_kind==='transfer')return false;
     const key=zielIncomingDateKey(row.approved_at||row.occurred_at);
     return !!key&&key>=queryRange.from&&key<=queryRange.to;
@@ -829,14 +890,20 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
           <div>
             <span class="zin-auto-icon">⌕</span>
             <div>
-              <strong>Consultar movimentos do Mercado Pago</strong>
-              <p>Escolha a carteira e o dia ou período. O ZIEL busca recebimentos aprovados e transferências, mantendo cada tipo separado para não transformar transferência em receita.</p>
+              <strong>Consultar movimentos por provedor</strong>
+              <p>Escolha a instituição, a carteira e o dia ou período. O ZIEL consulta os movimentos sem lançar nada automaticamente no financeiro.</p>
             </div>
           </div>
           <span class="zin-manual-badge">MANUAL</span>
         </div>
 
         <div class="zin-query-grid">
+          <div class="field">
+            <label for="zinQueryProvider">Instituição / provedor</label>
+            <select id="zinQueryProvider"><option value="">Carregando provedores…</option></select>
+            <div class="mini" id="zinProviderNote"></div>
+          </div>
+
           <div class="field zin-query-wallet">
             <label for="zinQueryWallet">Carteira</label>
             <select id="zinQueryWallet"><option value="">Carregando carteiras…</option></select>
@@ -915,11 +982,12 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
 
       <div class="zin-duplicate-note">
         <strong>Proteção contra duplicidade</strong>
-        <span>Cada recebimento usa o ID único do Mercado Pago. Reconsultar o mesmo dia ou período apenas atualiza o mesmo registro; a confirmação é idempotente e o banco possui uma trava adicional que impede criar a mesma entrada duas vezes.</span>
+        <span>Cada movimento usa a combinação <b>provedor + ID externo</b>. Reconsultar o mesmo dia ou período atualiza o mesmo registro; a confirmação é idempotente e o banco impede criar a mesma entrada duas vezes.</span>
       </div>
     </div>`;
 
   $('zinQueryMode').onchange=zielIncomingPaintDateMode;
+  $('zinQueryProvider').onchange=zielIncomingPaintProvider;
   $('zinQueryButton').onclick=zielRunIncomingQuery;
   $('zinStatus').onchange=zielPaintIncoming;
   $('zinWalletFilter').onchange=zielPaintIncoming;
@@ -931,15 +999,19 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
     await zielLoadIncomingIntegrations();
     if(seq!==zielIncomingRenderSeq)return;
 
-    const wallets=zielIncomingConfiguredWallets();
-    $('zinQueryWallet').innerHTML=wallets.length
-      ?zielIncomingWalletOptions()
-      :'<option value="">Nenhuma carteira Mercado Pago integrada</option>';
-    $('zinQueryWallet').disabled=!wallets.length;
-    $('zinQueryButton').disabled=!wallets.length;
+    const providers=zielIncomingQueryableProviders();
+    const defaultProvider=providers.includes('mercado_pago')?'mercado_pago':(providers[0]||'');
 
+    $('zinQueryProvider').innerHTML=providers.length
+      ?zielIncomingProviderOptions(defaultProvider)
+      :'<option value="">Nenhum provedor integrado</option>';
+    $('zinQueryProvider').disabled=!providers.length;
+
+    zielIncomingPaintProvider();
+
+    const allConfiguredWallets=zielIncomingConfiguredWallets();
     $('zinWalletFilter').innerHTML='<option value="">Todas</option>'+
-      wallets.map(w=>`<option value="${esc(w.id)}">${esc(businessName(w.business_id))} — ${esc(w.name)}</option>`).join('');
+      allConfiguredWallets.map(w=>`<option value="${esc(w.id)}">${esc(businessName(w.business_id))} — ${esc(w.name)}</option>`).join('');
 
     zielPaintIncoming();
   }catch(error){
