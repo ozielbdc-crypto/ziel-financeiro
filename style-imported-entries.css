@@ -279,3 +279,18 @@
     grid-template-columns:1fr
   }
 }
+
+
+/* Relatório pendente Mercado Pago */
+.zin-report-pending{
+  margin-top:10px;
+  padding:11px 12px;
+  border:1px solid #f0d7bd;
+  border-left:4px solid var(--orange);
+  border-radius:9px;
+  background:#fff8f1;
+  color:#6f4b29;
+  font-size:12px;
+  line-height:1.5
+}
+.zin-report-pending strong{color:var(--orange-dark)}
