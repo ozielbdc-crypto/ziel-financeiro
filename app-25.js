@@ -558,27 +558,32 @@ function zielPaintIncoming(){
   const host=$('zinList');
   if(!host)return;
 
-  const status=$('zinStatus')?.value||'Pendente';
-  const walletFilter=$('zinWalletFilter')?.value||'';
+  if(!zielIncomingLastQuery){
+    if($('zinPending'))$('zinPending').textContent='—';
+    if($('zinConfirmed'))$('zinConfirmed').textContent='—';
+    if($('zinIgnored'))$('zinIgnored').textContent='—';
+    host.innerHTML='<div class="zin-manual-empty"><strong>Nenhuma consulta realizada.</strong><span>Escolha a carteira, o dia ou período e clique em <b>Consultar movimentos</b>. O histórico não é carregado automaticamente.</span></div>';
+    return;
+  }
+
+  const status=$('zinStatus')?.value||'Todos';
+  const walletFilter=$('zinWalletFilter')?.value||zielIncomingLastQuery.wallet_id||'';
   const movement=$('zinMovement')?.value||'Todos';
   const q=String($('zinSearch')?.value||'').trim().toLocaleLowerCase('pt-BR');
 
-  const queryRange=zielIncomingLastQuery&&walletFilter===zielIncomingLastQuery.wallet_id
-    ?{from:zielIncomingLastQuery.date_from,to:zielIncomingLastQuery.date_to}
-    :null;
+  const queryRange={from:zielIncomingLastQuery.date_from,to:zielIncomingLastQuery.date_to};
 
-  const visibleBase=zielIncomingRows;
+  const visibleBase=zielIncomingRows.filter(row=>{
+    if(row.wallet_id!==zielIncomingLastQuery.wallet_id)return false;
+    const key=zielIncomingDateKey(row.approved_at||row.occurred_at);
+    return !!key&&key>=queryRange.from&&key<=queryRange.to;
+  });
 
   const rows=visibleBase.filter(row=>{
     if(status!=='Todos'&&row.decision_status!==status)return false;
     if(walletFilter&&row.wallet_id!==walletFilter)return false;
     if(movement==='Recebimentos'&&row.movement_kind==='transfer')return false;
     if(movement==='Transferências'&&row.movement_kind!=='transfer')return false;
-
-    if(queryRange){
-      const key=zielIncomingDateKey(row.approved_at||row.occurred_at);
-      if(!key||key<queryRange.from||key>queryRange.to)return false;
-    }
 
     if(q){
       const wallet=state.wallets.find(w=>w.id===row.wallet_id);
@@ -609,6 +614,10 @@ function zielPaintIncoming(){
 
 async function renderIncomingEntries(seq=zielIncomingRenderSeq){
   const today=iso();
+
+  // Esta página é deliberadamente manual: nunca exibe histórico ao abrir.
+  zielIncomingRows=[];
+  zielIncomingLastQuery=null;
 
   $('content').innerHTML=setTitle(
     'Entradas importadas',
@@ -702,7 +711,7 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
         </div>
       </div>
 
-      <div id="zinList"><div class="empty">Carregando entradas…</div></div>
+      <div id="zinList"><div class="zin-manual-empty"><strong>Nenhuma consulta realizada.</strong><span>Escolha a carteira e o período acima para buscar movimentos.</span></div></div>
 
       <div class="zin-duplicate-note">
         <strong>Proteção contra duplicidade</strong>
@@ -720,7 +729,7 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
   zielPaintQueryResult();
 
   try{
-    await Promise.all([zielLoadIncomingIntegrations(),zielLoadIncomingEntries()]);
+    await zielLoadIncomingIntegrations();
     if(seq!==zielIncomingRenderSeq)return;
 
     const wallets=zielIncomingConfiguredWallets();
@@ -730,12 +739,8 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
     $('zinQueryWallet').disabled=!wallets.length;
     $('zinQueryButton').disabled=!wallets.length;
 
-    const filterWallets=(state.wallets||[])
-      .filter(w=>(zielIncomingRows.some(r=>r.wallet_id===w.id))&&(!state.businessFilter||w.business_id===state.businessFilter))
-      .sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
-
     $('zinWalletFilter').innerHTML='<option value="">Todas</option>'+
-      filterWallets.map(w=>`<option value="${esc(w.id)}">${esc(businessName(w.business_id))} — ${esc(w.name)}</option>`).join('');
+      wallets.map(w=>`<option value="${esc(w.id)}">${esc(businessName(w.business_id))} — ${esc(w.name)}</option>`).join('');
 
     zielPaintIncoming();
   }catch(error){
