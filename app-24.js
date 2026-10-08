@@ -118,7 +118,7 @@ function zielOpenTokenModal(walletId,provider=''){
 
       <div class="field">
         <label for="zintProvider">Instituição / provedor</label>
-        <select id="zintProvider" ${existing?'disabled':''}>
+        <select id="zintProvider">
           <option value="mercado_pago" ${selected==='mercado_pago'?'selected':''}>Mercado Pago</option>
           <option value="asaas" ${selected==='asaas'?'selected':''}>Asaas</option>
           <option value="efi" ${selected==='efi'?'selected':''}>Efí</option>
@@ -143,17 +143,7 @@ function zielOpenTokenModal(walletId,provider=''){
         <span>Depois de salvar, o ZIEL mostrará apenas que o token está configurado. O valor completo não será enviado de volta ao navegador nem exibido nesta página.</span>
       </div>
 
-      <div class="zint-warning">
-        ${selected==='mercado_pago'
-          ?'<strong>Mercado Pago:</strong> use o <b>Access Token de produção</b> da conta correspondente a esta carteira.'
-          :selected==='asaas'
-            ?'<strong>Asaas:</strong> use a credencial da conta Asaas correspondente a esta carteira.'
-            :selected==='efi'
-              ?'<strong>Efí:</strong> use a credencial da conta Efí correspondente a esta carteira.'
-              :selected==='lytex'
-                ?'<strong>Lytex:</strong> use a credencial da conta Lytex correspondente a esta carteira.'
-                :'<strong>Atenção:</strong> confirme que a credencial pertence exatamente à conta representada por esta carteira.'}
-      </div>
+      <div class="zint-warning" id="zintProviderHelp"></div>
 
       <div class="actions">
         <button type="button" class="btn btn-soft" id="zintCancel">Cancelar</button>
@@ -163,6 +153,22 @@ function zielOpenTokenModal(walletId,provider=''){
   `);
 
   const token=$('zintToken');
+  const providerSelect=$('zintProvider');
+  const paintProviderHelp=()=>{
+    const p=providerSelect.value;
+    const messages={
+      mercado_pago:'<strong>Mercado Pago:</strong> use o <b>Access Token de produção</b> da conta correspondente a esta carteira.',
+      asaas:'<strong>Asaas:</strong> use a credencial da conta Asaas correspondente a esta carteira.',
+      efi:'<strong>Efí:</strong> use a credencial da conta Efí correspondente a esta carteira.',
+      lytex:'<strong>Lytex:</strong> use a credencial da conta Lytex correspondente a esta carteira.',
+      sgp:'<strong>SGP:</strong> use a credencial da integração correspondente a esta carteira.',
+      outro:'<strong>Atenção:</strong> confirme que a credencial pertence exatamente à conta representada por esta carteira.'
+    };
+    $('zintProviderHelp').innerHTML=messages[p]||messages.outro;
+  };
+  providerSelect.onchange=paintProviderHelp;
+  paintProviderHelp();
+
   $('zintToggleSecret').onclick=()=>{
     const visible=token.type==='text';
     token.type=visible?'password':'text';
@@ -174,7 +180,7 @@ function zielOpenTokenModal(walletId,provider=''){
   $('zintTokenForm').onsubmit=async e=>{
     e.preventDefault();
     const value=token.value.trim();
-    const providerValue=existing?existing.provider:$('zintProvider').value;
+    const providerValue=$('zintProvider').value;
 
     if(value.length<20)return toast('O token informado parece muito curto.','error');
 
@@ -182,17 +188,29 @@ function zielOpenTokenModal(walletId,provider=''){
     btn.disabled=true;
     btn.textContent='Salvando…';
     try{
-      const {error}=await supabase.rpc('save_wallet_integration_token',{
-        p_wallet_id:wallet.id,
-        p_provider:providerValue,
-        p_token:value
-      });
+      let error;
+      if(existing){
+        ({error}=await supabase.rpc('replace_wallet_integration_token',{
+          p_wallet_id:wallet.id,
+          p_current_provider:existing.provider,
+          p_new_provider:providerValue,
+          p_token:value
+        }));
+      }else{
+        ({error}=await supabase.rpc('save_wallet_integration_token',{
+          p_wallet_id:wallet.id,
+          p_provider:providerValue,
+          p_token:value
+        }));
+      }
       if(error)throw error;
       token.value='';
       closeModal();
       await zielLoadWalletIntegrations();
       if(document.querySelector('.nav button.active')?.dataset.page==='integracoes')zielPaintIntegrations();
-      toast(existing?'Token substituído com segurança.':'Token configurado com segurança.');
+      toast(existing
+        ?(providerValue!==existing.provider?'Provedor e token atualizados com segurança.':'Token substituído com segurança.')
+        :'Token configurado com segurança.');
     }catch(error){
       toast('Não foi possível salvar o token: '+(error?.message||'erro desconhecido'),'error');
       if($('zintSave')){
