@@ -73,6 +73,48 @@ function zielIncomingStatusBadge(status){
   return `<span class="badge ${kind}">${esc(status||'Pendente')}</span>`;
 }
 
+function zielIncomingFeeItems(row){
+  const raw=Array.isArray(row?.fee_breakdown)?row.fee_breakdown:[];
+  const items=raw.map(item=>({
+    label:String(item?.label||item?.type||'Taxa / dedução'),
+    amount:Math.round(Math.abs(Number(item?.amount||0))*100)/100
+  })).filter(item=>item.amount>.004);
+
+  const total=Math.round(Number(row?.fee_amount||0)*100)/100;
+  const sum=Math.round(items.reduce((a,item)=>a+item.amount,0)*100)/100;
+
+  if(total>.004&&Math.abs(total-sum)>.01){
+    items.push({
+      label:'Outras taxas / deduções',
+      amount:Math.round(Math.max(0,total-sum)*100)/100
+    });
+  }
+  if(total>.004&&!items.length){
+    items.push({label:'Taxas / deduções Mercado Pago',amount:total});
+  }
+  return items;
+}
+
+function zielIncomingFeeDetailsHtml(row,compact=false){
+  const fee=Number(row?.fee_amount||0);
+  if(fee<=.009)return '';
+  const items=zielIncomingFeeItems(row);
+  const basis=row?.fee_basis==='net_received_amount'
+    ?'Total fechado pelo valor líquido efetivamente creditado pelo Mercado Pago.'
+    :'Total informado pelo detalhamento de taxas do Mercado Pago.';
+
+  return `<div class="zin-fee-breakdown ${compact?'compact':''}">
+    <div class="zin-fee-breakdown-head">
+      <strong>Taxas e deduções incluídas</strong>
+      <span>Total − ${fmt(fee)}</span>
+    </div>
+    <div class="zin-fee-lines">
+      ${items.map(item=>`<div><span>${esc(item.label)}</span><b>− ${fmt(item.amount)}</b></div>`).join('')}
+    </div>
+    <p>${esc(basis)} Inclui tarifa de cartão/processamento, parcelamento, impostos ou outras deduções quando aplicáveis.</p>
+  </div>`;
+}
+
 function zielIncomingCard(row){
   const wallet=state.wallets.find(w=>w.id===row.wallet_id);
   const when=row.approved_at||row.occurred_at||row.imported_at;
@@ -137,11 +179,13 @@ function zielIncomingCard(row){
       <div><small>${isTransfer?'Tipo no provedor':'Status no provedor'}</small><strong>${esc(zielIncomingProviderStatusLabel(row.provider_transaction_type||row.provider_status||'—',isTransfer?'transfer':'payment'))}</strong></div>
       <div><small>Método</small><strong>${esc(row.payment_method||'—')}</strong></div>
       <div><small>ID Mercado Pago</small><strong>${esc(row.provider_source_id||row.external_id||'—')}</strong></div>
-      ${isCard?`<div><small>Parcelas</small><strong>${Number(row.installments||1)}x</strong></div>
-      <div><small>Taxas/deduções</small><strong>${fmt(fee)}</strong></div>
-      <div><small>Valor líquido</small><strong>${fmt(net)}</strong></div>
-      <div><small>Liberação</small><strong class="${released?'g':'a'}">${released?'Liberado':row.money_release_date?zielIncomingWhen(row.money_release_date):'Aguardando'}</strong></div>`:''}
+      ${isCard?`<div><small>Parcelas</small><strong>${Number(row.installments||1)}x</strong></div>`:''}
+      ${!isTransfer&&fee>0.009?`<div><small>Taxas/deduções totais</small><strong class="r">− ${fmt(fee)}</strong></div>
+      <div><small>Valor líquido</small><strong class="g">${fmt(net)}</strong></div>`:''}
+      ${!isTransfer?`<div><small>Liberação</small><strong class="${released?'g':'a'}">${released?'Liberado':row.money_release_date?zielIncomingWhen(row.money_release_date):'Aguardando'}</strong></div>`:''}
     </div>
+
+    ${!isTransfer&&fee>0.009?zielIncomingFeeDetailsHtml(row):''}
 
     ${!released&&!isTransfer?`<div class="zin-release-warning"><strong>Pagamento aprovado, mas ainda não disponível na carteira.</strong><span>O ZIEL não permite lançar esse valor no saldo até a liberação do Mercado Pago. Consulte novamente depois.</span></div>`:''}
 
@@ -390,11 +434,13 @@ function zielIncomingOpenConfirm(id){
       </div>
 
       ${isCard||fee>0.009?`<div class="zin-settlement-summary">
-        <div><small>Método</small><strong>${esc(row.payment_method||'Cartão')}</strong></div>
-        <div><small>Taxas/deduções</small><strong class="r">− ${fmt(fee)}</strong></div>
+        <div><small>Método</small><strong>${esc(row.payment_method||'Mercado Pago')}</strong></div>
+        <div><small>Taxas/deduções totais</small><strong class="r">− ${fmt(fee)}</strong></div>
         <div><small>Líquido na carteira</small><strong class="g">${fmt(net)}</strong></div>
         <div><small>Data de liberação</small><strong>${esc(zielIncomingWhen(releaseWhen))}</strong></div>
       </div>`:''}
+
+      ${fee>0.009?zielIncomingFeeDetailsHtml(row,true):''}
 
       <div class="field">
         <label>Categoria</label>
@@ -408,7 +454,7 @@ function zielIncomingOpenConfirm(id){
 
       <div class="zin-confirm-note">
         ${fee>0.009
-          ?`O ZIEL criará uma <b>Entrada de ${fmt(gross)}</b> e uma <b>Saída de ${fmt(fee)}</b> em <b>Impostos/Taxas</b>. O efeito líquido na carteira será <b>${fmt(net)}</b>.`
+          ?`O ZIEL criará uma <b>Entrada de ${fmt(gross)}</b> e uma <b>Saída de ${fmt(fee)}</b> em <b>Impostos/Taxas</b>, reunindo todas as deduções do provedor — inclusive taxas de cartão/parcelamento quando existirem. O efeito líquido na carteira será <b>${fmt(net)}</b>.`
           :`O ZIEL criará uma <b>Entrada de ${fmt(gross)}</b> nessa carteira.`}
         A data usada será a de liberação do dinheiro quando disponível. O ID externo <b>${esc(row.external_id||'—')}</b> impede lançamento duplicado.
       </div>
@@ -602,7 +648,7 @@ function zielPaintQueryResult(){
     <div><small>Entradas localizadas</small><strong>${Number(q.payments_found||0)}</strong></div>
     <div class="zin-query-total"><small>Total das entradas no período</small><strong class="g">${fmt(Number(q.period_gross_total||0))}</strong><span class="mini">Soma dos pagamentos aprovados, sem transferências</span></div>
     <div><small>Total líquido</small><strong>${fmt(Number(q.period_net_total??q.period_gross_total??0))}</strong><span class="mini">Após taxas/deduções informadas pelo Mercado Pago</span></div>
-    <div><small>Taxas / deduções</small><strong class="r">${fmt(Number(q.period_fee_total||0))}</strong></div>
+    <div><small>Taxas / deduções totais</small><strong class="r">${fmt(Number(q.period_fee_total||0))}</strong><span class="mini">Inclui cartão, parcelamento, impostos e demais deduções que reduzam o líquido</span></div>
     <div><small>Novos movimentos</small><strong class="g">${Number(q.new_entries||0)}</strong></div>
     <div><small>Já existentes / atualizadas</small><strong>${Number(q.updated_entries??q.already_existing??0)}</strong></div>
     <div><small>Transferências localizadas</small><strong>${Number(q.transfers_found||0)}</strong><span class="mini">${Number(q.incoming_transfers_found||0)} recebida(s) · ${Number(q.outgoing_transfers_found||0)} enviada(s) · ${Number(q.ambiguous_transfers_found||0)} a confirmar</span></div>
