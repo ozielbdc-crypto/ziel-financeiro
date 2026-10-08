@@ -620,31 +620,73 @@ async function zielRunIncomingQuery(){
   };
 
   try{
-    // Uma única chamada deve fechar a consulta e devolver o total do período.
-    // O backend calcula os totais diretamente a partir da resposta do Mercado Pago
-    // e faz upsert pelo ID externo, portanto não é necessário consultar duas vezes.
-    const result=await invoke();
+    // O Mercado Pago pode devolver tipos de pagamento em momentos diferentes
+    // na busca do mesmo período. Para que o usuário clique apenas uma vez,
+    // fazemos duas leituras internas e consolidamos pelo ID único armazenado no banco.
+    const first=await invoke();
+
+    if($('zinQueryButton')){
+      $('zinQueryButton').textContent='Validando recebimentos…';
+    }
+
+    const second=await invoke();
+
+    // Recarrega o que efetivamente ficou salvo após as duas leituras.
+    // A tabela possui UNIQUE(owner_id, provider, external_id), então o mesmo
+    // pagamento nunca é contado duas vezes ao consolidar o período.
+    await zielLoadIncomingEntries();
+
+    const periodRows=zielIncomingRows.filter(row=>{
+      if(row.wallet_id!==walletId)return false;
+      const key=zielIncomingDateKey(row.approved_at||row.occurred_at);
+      return !!key&&key>=from&&key<=to;
+    });
+
+    const uniqueRows=[...new Map(periodRows.map(row=>[
+      String(row.provider||'')+'|'+String(row.external_id||row.id||''),
+      row
+    ])).values()];
+
+    const receiptRows=uniqueRows.filter(row=>row.movement_kind!=='transfer');
+    const transferRows=uniqueRows.filter(row=>row.movement_kind==='transfer');
+
+    const grossTotal=receiptRows.reduce((sum,row)=>
+      sum+Number(row.gross_amount??row.amount??0),0);
+    const netTotal=receiptRows.reduce((sum,row)=>
+      sum+Number(row.net_amount??row.gross_amount??row.amount??0),0);
+    const feeTotal=receiptRows.reduce((sum,row)=>
+      sum+Number(row.fee_amount??0),0);
+    const awaiting=receiptRows.filter(row=>row.available_for_balance===false).length;
 
     zielIncomingLastQuery={
-      ...result,
-      verification_passes:1
+      ...second,
+      wallet_id:walletId,
+      date_from:from,
+      date_to:to,
+      payments_only:false,
+      payments_found:receiptRows.length,
+      transfers_found:transferRows.length,
+      period_gross_total:Math.round(grossTotal*100)/100,
+      period_net_total:Math.round(netTotal*100)/100,
+      period_fee_total:Math.round(feeTotal*100)/100,
+      awaiting_release:awaiting,
+      new_entries:Number(first.new_entries||0)+Number(second.new_entries||0),
+      updated_entries:Number(second.updated_entries??second.already_existing??0),
+      verification_passes:2,
+      transfer_warning:second.transfer_warning||null
     };
-
-    // Mostra os totais imediatamente no primeiro clique.
-    zielPaintQueryResult();
-
-    await zielLoadIncomingEntries();
 
     if($('zinWalletFilter'))$('zinWalletFilter').value=walletId;
     if($('zinStatus'))$('zinStatus').value='Todos';
     if($('zinMovement'))$('zinMovement').value='Todos';
 
+    zielPaintQueryResult();
     zielPaintIncoming();
 
     toast(
       'Consulta concluída: '+
-      Number(result.new_entries||0)+' nova(s), '+
-      Number(result.updated_entries||0)+' existente(s)/atualizada(s).'
+      Number(zielIncomingLastQuery.new_entries||0)+' nova(s), '+
+      Number(zielIncomingLastQuery.updated_entries||0)+' existente(s)/atualizada(s).'
     );
   }catch(error){
     toast('Consulta falhou: '+(error?.message||'erro desconhecido'),'error');
@@ -684,7 +726,7 @@ function zielPaintQueryResult(){
     <button type="button" class="btn btn-soft" id="zinShowReceiptsQuery">Só recebimentos</button>
     <button type="button" class="btn btn-soft" id="zinShowTransfersQuery">Só transferências</button>
   </div>
-  <p class="mini">A consulta traz <b>recebimentos e transferências</b>, mas mantém os tipos separados. Os mesmos IDs do Mercado Pago são atualizados e <b>não criam duplicidade</b>. Transferências nunca entram no total de receitas.</p>`;
+  <p class="mini">A consulta traz <b>recebimentos e transferências</b>, mas mantém os tipos separados. Os mesmos IDs do Mercado Pago são atualizados e <b>não criam duplicidade</b>. Transferências nunca entram no total de receitas.${Number(q.verification_passes||1)>1?' O botão faz duas leituras internas de conferência no mesmo clique e consolida tudo pelo ID único do pagamento.':''}</p>`;
 
   const applyView=movement=>{
     if($('zinWalletFilter'))$('zinWalletFilter').value=q.wallet_id||'';
