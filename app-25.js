@@ -601,7 +601,7 @@ async function zielRunIncomingQuery(){
   const btn=$('zinQueryButton');
   zielIncomingQueryInFlight=true;
   btn.disabled=true;
-  btn.textContent='Consultando entradas…';
+  btn.textContent='Consultando movimentos…';
 
   const invoke=async()=>{
     const {data,error}=await supabase.functions.invoke('wallet-integration-query',{
@@ -610,7 +610,7 @@ async function zielRunIncomingQuery(){
         provider:'mercado_pago',
         date_from:from,
         date_to:to,
-        payments_only:true
+        payments_only:false
       }
     });
 
@@ -657,7 +657,7 @@ async function zielRunIncomingQuery(){
     zielIncomingQueryInFlight=false;
     if($('zinQueryButton')){
       $('zinQueryButton').disabled=false;
-      $('zinQueryButton').textContent='Consultar entradas';
+      $('zinQueryButton').textContent='Consultar movimentos';
     }
   }
 }
@@ -668,33 +668,41 @@ function zielPaintQueryResult(){
 
   const q=zielIncomingLastQuery;
   if(!q){
-    host.innerHTML='<div class="zin-query-empty">Escolha a carteira e a data para consultar pagamentos recebidos do Mercado Pago.</div>';
+    host.innerHTML='<div class="zin-query-empty">Escolha a carteira e a data para consultar recebimentos e transferências do Mercado Pago.</div>';
     return;
   }
 
   host.innerHTML=`<div class="zin-query-summary">
     <div><small>Período consultado</small><strong>${esc(br(q.date_from))}${q.date_from!==q.date_to?' até '+esc(br(q.date_to)):''}</strong></div>
     <div><small>Recebimentos aprovados</small><strong>${Number(q.payments_found||0)}</strong></div>
-    <div class="zin-query-total"><small>${q.date_from===q.date_to?'Total aprovado do dia':'Total aprovado no período'}</small><strong class="g">${fmt(Number(q.period_gross_total||0))}</strong><span class="mini">Soma de todos os ${Number(q.payments_found||0)} recebimento${Number(q.payments_found||0)===1?'':'s'} aprovados, sem transferências</span></div>
+    <div><small>Transferências encontradas</small><strong>${Number(q.transfers_found||0)}</strong><span class="mini">Separadas das receitas</span></div>
+    <div class="zin-query-total"><small>${q.date_from===q.date_to?'Total recebido do dia':'Total recebido no período'}</small><strong class="g">${fmt(Number(q.period_gross_total||0))}</strong><span class="mini">Somente recebimentos aprovados; transferências não entram neste total</span></div>
     <div><small>Total líquido</small><strong>${fmt(Number(q.period_net_total??q.period_gross_total??0))}</strong><span class="mini">Após taxas/deduções informadas pelo Mercado Pago</span></div>
     <div><small>Taxas / deduções totais</small><strong class="r">${fmt(Number(q.period_fee_total||0))}</strong><span class="mini">Inclui cartão, parcelamento, impostos e demais deduções que reduzam o líquido</span></div>
-    <div><small>Novas entradas</small><strong class="g">${Number(q.new_entries||0)}</strong></div>
-    <div><small>Já existentes / atualizadas</small><strong>${Number(q.updated_entries??q.already_existing??0)}</strong></div>
-
+    <div><small>Novos movimentos</small><strong class="g">${Number(q.new_entries||0)}</strong></div>
+    <div><small>Já existentes / atualizados</small><strong>${Number(q.updated_entries??q.already_existing??0)}</strong></div>
     <div><small>Aguardando liberação</small><strong class="a">${Number(q.awaiting_release||0)}</strong></div>
   </div>
+  ${q.transfer_warning?`<div class="message error">${esc(q.transfer_warning)}</div>`:''}
   <div class="zin-query-shortcuts">
-    <button type="button" class="btn btn-soft" id="zinShowAllQuery">Ver entradas do período</button>
+    <button type="button" class="btn btn-soft" id="zinShowAllQuery">Ver todos</button>
+    <button type="button" class="btn btn-soft" id="zinShowReceiptsQuery">Só recebimentos</button>
+    <button type="button" class="btn btn-soft" id="zinShowTransfersQuery">Só transferências</button>
   </div>
-  <p class="mini">Esta consulta manual traz somente <b>pagamentos recebidos e aprovados</b>. Um único clique faz a busca e uma verificação automática do mesmo período. Os mesmos IDs do Mercado Pago são atualizados e <b>não criam duplicidade</b>.</p>`;
+  <p class="mini">A consulta traz <b>recebimentos e transferências</b>, mas mantém os tipos separados. Os mesmos IDs do Mercado Pago são atualizados e <b>não criam duplicidade</b>. Transferências nunca entram no total de receitas.</p>`;
 
-  const showAll=$('zinShowAllQuery');
-  if(showAll)showAll.onclick=()=>{
+  const applyView=movement=>{
     if($('zinWalletFilter'))$('zinWalletFilter').value=q.wallet_id||'';
     if($('zinStatus'))$('zinStatus').value='Todos';
-    if($('zinMovement'))$('zinMovement').value='Recebimentos';
+    if($('zinMovement'))$('zinMovement').value=movement;
     zielPaintIncoming();
   };
+  const showAll=$('zinShowAllQuery');
+  const showReceipts=$('zinShowReceiptsQuery');
+  const showTransfers=$('zinShowTransfersQuery');
+  if(showAll)showAll.onclick=()=>applyView('Todos');
+  if(showReceipts)showReceipts.onclick=()=>applyView('Recebimentos');
+  if(showTransfers)showTransfers.onclick=()=>applyView('Transferências');
 
 }
 
@@ -716,7 +724,7 @@ function zielPaintIncoming(){
     if($('zinPending'))$('zinPending').textContent='—';
     if($('zinConfirmed'))$('zinConfirmed').textContent='—';
     if($('zinIgnored'))$('zinIgnored').textContent='—';
-    host.innerHTML='<div class="zin-manual-empty"><strong>Nenhuma consulta realizada.</strong><span>Escolha a carteira, o dia ou período e clique em <b>Consultar entradas</b>. O histórico não é carregado automaticamente.</span></div>';
+    host.innerHTML='<div class="zin-manual-empty"><strong>Nenhuma consulta realizada.</strong><span>Escolha a carteira, o dia ou período e clique em <b>Consultar movimentos</b>. O histórico não é carregado automaticamente.</span></div>';
     return;
   }
 
@@ -784,8 +792,8 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
           <div>
             <span class="zin-auto-icon">⌕</span>
             <div>
-              <strong>Consultar entradas do Mercado Pago</strong>
-              <p>Escolha a carteira e o dia ou período. O ZIEL busca somente pagamentos recebidos e aprovados, sem misturar transferências no total de Entradas.</p>
+              <strong>Consultar movimentos do Mercado Pago</strong>
+              <p>Escolha a carteira e o dia ou período. O ZIEL busca recebimentos aprovados e transferências, mantendo cada tipo separado para não transformar transferência em receita.</p>
             </div>
           </div>
           <span class="zin-manual-badge">MANUAL</span>
@@ -822,7 +830,7 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
           </div>
 
           <div class="zin-query-action">
-            <button type="button" class="btn btn-primary" id="zinQueryButton">Consultar entradas</button>
+            <button type="button" class="btn btn-primary" id="zinQueryButton">Consultar movimentos</button>
           </div>
         </div>
 
