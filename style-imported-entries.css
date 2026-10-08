@@ -1,8 +1,9 @@
-.zin-query-grid{grid-template-columns:minmax(260px,1.3fr) 150px minmax(340px,1fr);align-items:end}
-.zin-range{grid-column:3/4;min-width:0}.zin-range .field{min-width:0}
+.zin-query-grid{grid-template-columns:200px minmax(260px,1.3fr) 150px minmax(220px,1fr);align-items:end}
+.zin-range{grid-column:4/5;min-width:0}.zin-range .field{min-width:0}
 .zin-query-action{grid-column:1/-1;display:flex;justify-content:flex-end;align-items:center;padding-top:2px}
 .zin-query-action .btn{min-width:210px;min-height:42px}
-@media(max-width:1050px){.zin-query-grid{grid-template-columns:1fr 160px 1fr}.zin-query-action{grid-column:1/-1}}
+@media(max-width:1180px){.zin-query-grid{grid-template-columns:1fr 1.35fr 150px}.zin-range{grid-column:1/-1}.zin-query-action{grid-column:1/-1}}
+@media(max-width:900px){.zin-query-grid{grid-template-columns:1fr 1fr}.zin-range{grid-column:1/-1}}
 @media(max-width:700px){.zin-query-grid{grid-template-columns:1fr}.zin-range{grid-column:auto}.zin-query-action{grid-column:auto}.zin-query-action .btn{width:100%;min-width:0}}
 
 
