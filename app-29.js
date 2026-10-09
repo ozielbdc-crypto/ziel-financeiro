@@ -45,7 +45,7 @@ zielOpenTokenModal=function(walletId,provider=''){
     $('zintEfiClientSecret').required=isEfi;
 
     if(isEfi&&help){
-      help.innerHTML='<strong>Efí:</strong> informe o <b>Client ID</b> e o <b>Client Secret de produção</b> da aplicação com a API de Emissão de Cobranças habilitada. O ZIEL obterá o Access Token temporário automaticamente no backend.';
+      help.innerHTML='<strong>Efí:</strong> informe o <b>Client ID</b> e o <b>Client Secret de produção</b> da aplicação com a API de Emissão de Cobranças habilitada. O ZIEL obterá o Access Token temporário automaticamente no backend. <b>Taxa fixa configurada: R$ 1,79 por entrada importada.</b>';
     }
   };
   select.onchange=e=>{
@@ -167,6 +167,7 @@ zielTestIntegration=async function(walletId,provider){
         <div class="zint-test-grid">
           <div><small>Ambiente</small><strong>Produção</strong></div>
           <div><small>Autenticação</small><strong>OAuth2 · Client Credentials</strong></div>
+          <div><small>Taxa fixa por entrada</small><strong>R$ 1,79</strong></div>
         </div>
         <p class="mini">Este teste somente autentica a aplicação Efí. Nenhuma cobrança foi importada nem lançada no financeiro.</p>
         <div class="actions"><button type="button" class="btn btn-primary" id="zintTestClose">Fechar</button></div>
