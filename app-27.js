@@ -1,4 +1,4 @@
-// Consulta manual de entradas — Mercado Pago, Asaas e Lytex.
+// Consulta manual de entradas — Mercado Pago, Asaas, Efí e Lytex.
 // Fluxo: escolher carteira -> dia/período -> revisar -> confirmar -> Lançamentos.
 // A tela consulta somente recebimentos; transferências ficam fora deste fluxo.
 
@@ -6,12 +6,12 @@ zielLoadIncomingIntegrations = async function(){
   const {data,error}=await supabase.rpc('list_wallet_integrations');
   if(error)throw error;
   zielIncomingIntegrations=(Array.isArray(data)?data:[])
-    .filter(i=>i.enabled!==false&&['mercado_pago','asaas','lytex'].includes(i.provider));
+    .filter(i=>i.enabled!==false&&['mercado_pago','asaas','efi','lytex'].includes(i.provider));
   return zielIncomingIntegrations;
 };
 
 zielIncomingProviderSupported = function(provider){
-  return ['mercado_pago','asaas','lytex'].includes(provider);
+  return ['mercado_pago','asaas','efi','lytex'].includes(provider);
 };
 
 zielIncomingPaintWallet = function(){
@@ -22,7 +22,7 @@ zielIncomingPaintWallet = function(){
 
   if(!walletId){
     if(note){
-      note.textContent='Selecione uma carteira com Mercado Pago, Asaas ou Lytex configurado.';
+      note.textContent='Selecione uma carteira com Mercado Pago, Asaas, Efí ou Lytex configurado.';
       note.className='mini';
     }
     if(button)button.disabled=true;
@@ -92,7 +92,9 @@ zielRunIncomingQuery = async function(){
   try{
     const functionName=provider==='lytex'
       ?'wallet-integration-query-lytex'
-      :'wallet-integration-query';
+      :provider==='efi'
+        ?'wallet-integration-query-efi'
+        :'wallet-integration-query';
 
     const {data,error}=await supabase.functions.invoke(functionName,{
       body:{
@@ -218,7 +220,7 @@ renderIncomingEntries = async function(seq=zielIncomingRenderSeq){
 
   $('content').innerHTML=setTitle(
     'Consultar entradas',
-    'Mercado Pago, Asaas e Lytex · consulta manual por dia ou período e lançamento somente após confirmação'
+    'Mercado Pago, Asaas, Efí e Lytex · consulta manual por dia ou período e lançamento somente após confirmação'
   )+`
     <div class="zin-page">
       <section class="zin-query-card">
@@ -329,7 +331,7 @@ renderIncomingEntries = async function(seq=zielIncomingRenderSeq){
     const wallets=zielIncomingConfiguredWallets();
     $('zinQueryWallet').innerHTML=wallets.length
       ?zielIncomingWalletOptions(wallets[0]?.id||'')
-      :'<option value="">Nenhuma carteira Mercado Pago, Asaas ou Lytex com token ativo</option>';
+      :'<option value="">Nenhuma carteira Mercado Pago, Asaas, Efí ou Lytex com token ativo</option>';
     $('zinQueryWallet').disabled=!wallets.length;
 
     $('zinWalletFilter').innerHTML='<option value="">Todas</option>'+
