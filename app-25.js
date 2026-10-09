@@ -112,7 +112,9 @@ function zielIncomingFeeDetailsHtml(row,compact=false){
     ?'Total fechado pelo valor líquido efetivamente creditado pelo '+providerLabel+'.'
     :row?.fee_basis==='net_value'
       ?'Total fechado pelo valor líquido informado pelo '+providerLabel+'.'
-      :'Total informado pelo detalhamento de taxas do '+providerLabel+'.';
+      :row?.fee_basis==='fixed_fee'
+        ?'Taxa fixa configurada para a '+providerLabel+'.'
+        :'Total informado pelo detalhamento de taxas do '+providerLabel+'.';
 
   return `<div class="zin-fee-breakdown ${compact?'compact':''}">
     <div class="zin-fee-breakdown-head">
@@ -599,7 +601,7 @@ function zielIncomingWalletOptions(selected=''){
 }
 
 function zielIncomingProviderSupported(provider){
-  return ['mercado_pago','asaas','lytex'].includes(provider);
+  return ['mercado_pago','asaas','efi','lytex'].includes(provider);
 }
 
 function zielIncomingPaintWallet(){
@@ -693,7 +695,9 @@ async function zielRunIncomingQuery(){
   try{
     const functionName=provider==='lytex'
       ?'wallet-integration-query-lytex'
-      :'wallet-integration-query';
+      :provider==='efi'
+        ?'wallet-integration-query-efi'
+        :'wallet-integration-query';
 
     const reusableSettlementTask=
       provider==='mercado_pago'&&
@@ -897,7 +901,7 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
 
   $('content').innerHTML=setTitle(
     'Consultar entradas',
-    'Mercado Pago, Asaas e Lytex · consulta manual por dia ou período, com lançamento somente após sua confirmação'
+    'Mercado Pago, Asaas, Efí e Lytex · consulta manual por dia ou período, com lançamento somente após sua confirmação'
   )+`
     <div class="zin-page">
       <section class="zin-query-card">
@@ -906,7 +910,7 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
             <span class="zin-auto-icon">⌕</span>
             <div>
               <strong>Consultar entradas da carteira</strong>
-              <p>Escolha a carteira e o dia ou período. O ZIEL identifica automaticamente Mercado Pago, Asaas ou Lytex pela integração configurada na própria carteira.</p>
+              <p>Escolha a carteira e o dia ou período. O ZIEL identifica automaticamente Mercado Pago, Asaas, Efí ou Lytex pela integração configurada na própria carteira.</p>
             </div>
           </div>
           <span class="zin-manual-badge">MANUAL</span>
