@@ -1,5 +1,23 @@
 function renderTransactions(){
- const arr=filtered(state.transactions);$('content').innerHTML=setTitle('Lançamentos','Entradas e saídas financeiras',`<button class="btn btn-primary" id="newTx">+ Novo lançamento</button>`)+`<div class="card"><div class="toolbar"><select id="txType"><option value="">Todos os tipos</option><option>Entrada</option><option>Saída</option></select><input class="input" id="txSearch" placeholder="Buscar descrição"></div><div id="txTable"></div></div>`;$('newTx').onclick=()=>openTransaction();$('txType').onchange=paint;$('txSearch').oninput=paint;paint();function paint(){let x=arr.filter(t=>!$('txType').value||t.type===$('txType').value).filter(t=>!$('txSearch').value||t.description.toLowerCase().includes($('txSearch').value.toLowerCase()));$('txTable').innerHTML=transactionTable(x,true)}}
+ const arr=filtered(state.transactions);
+ const wallets=state.wallets.filter(w=>!state.businessFilter||w.business_id===state.businessFilter);
+ $('content').innerHTML=setTitle('Lançamentos','Entradas e saídas financeiras',`<button class="btn btn-primary" id="newTx">+ Novo lançamento</button>`)+
+ `<div class="card"><div class="toolbar">
+ <select id="txType" aria-label="Tipo de movimentação"><option value="">Todos os tipos</option><option>Entrada</option><option>Saída</option></select>
+ <select id="txWallet" aria-label="Carteira"><option value="">Todas as carteiras</option>${wallets.map(w=>`<option value="${esc(w.id)}">${esc(businessName(w.business_id))} — ${esc(w.name)}</option>`).join('')}</select>
+ <input class="input" id="txSearch" placeholder="Buscar descrição"></div><div id="txTable"></div></div>`;
+ $('newTx').onclick=()=>openTransaction();
+ $('txType').onchange=paint;
+ $('txWallet').onchange=paint;
+ $('txSearch').oninput=paint;
+ paint();
+ function paint(){
+  const x=arr.filter(t=>(!$('txType').value||t.type===$('txType').value)&&
+   (!$('txWallet').value||t.wallet_id===$('txWallet').value)&&
+   (!$('txSearch').value||String(t.description||'').toLowerCase().includes($('txSearch').value.toLowerCase())));
+  $('txTable').innerHTML=transactionTable(x,true);
+ }
+}
 function transactionTable(arr,actions=true){if(!arr.length)return '<div class="empty">Nenhum lançamento encontrado.</div>';return `<div class="table-wrap"><table class="table"><thead><tr><th>Data</th><th>Empresa</th><th>Descrição</th><th>Carteira</th><th>Tipo</th><th>Valor</th><th>Conciliação</th>${actions?'<th></th>':''}</tr></thead><tbody>${arr.map(t=>`<tr><td>${br(t.transaction_date)}</td><td>${esc(businessName(t.business_id))}</td><td>${esc(t.description)}<div class="mini">${esc(t.category||'')}</div></td><td>${esc(walletName(t.wallet_id))}</td><td>${badge(t.type)}</td><td class="${t.type==='Entrada'?'g':'r'}"><b>${t.type==='Entrada'?'+':'-'} ${fmt(t.amount)}</b></td><td>${badge(t.reconciliation_status)}</td>${actions?`<td>${t.source_type==='manual'?`<button class="btn btn-soft" data-del-tx="${t.id}">Excluir</button>`:''}</td>`:''}</tr>`).join('')}</tbody></table></div>`}
 
 function renderPayables(){let arr=filtered(state.payables),fixed=filtered(state.recurring_payables);$('content').innerHTML=setTitle('Contas a Pagar','Controle de vencimentos, pagamentos e recorrências',`<div class="actions"><button class="btn btn-soft" id="newFixed">+ Conta fixa</button><button class="btn btn-primary" id="newPay">+ Nova conta</button></div>`)+`<div class="card" style="margin-bottom:14px"><div class="section-head"><h3>Contas fixas recorrentes</h3><span class="mini">Geração mensal automática</span></div><div id="fixedList"></div></div><div class="card"><div class="toolbar"><select id="payStatus"><option value="">Todos</option><option>Pendente</option><option>Pago</option><option>Cancelado</option></select></div><div id="payTable"></div></div>`;$('newPay').onclick=openPayable;$('newFixed').onclick=openRecurringPayable;$('payStatus').onchange=paint;paint();function paint(){let x=arr.filter(p=>!$('payStatus').value||p.status===$('payStatus').value);$('payTable').innerHTML=payableTable(x,true);$('fixedList').innerHTML=fixed.length?fixed.map(r=>`<div class="wallet-line"><span><b>${esc(r.description)}</b><small>${esc(businessName(r.business_id))} · ${esc(r.supplier)} · vence dia ${r.due_day}</small></span><span><b>${fmt(r.amount)}</b><button class="btn btn-soft" data-toggle-fixed="${r.id}" data-active="${r.active}">${r.active?'Pausar':'Reativar'}</button></span></div>`).join(''):'<div class="empty">Nenhuma conta fixa cadastrada.</div>'}}
