@@ -140,13 +140,12 @@ function zielOpenTokenModal(walletId,provider=''){
       </div>
 
       <div class="field">
-        <label for="zintToken" id="zintTokenLabel">Token / chave privada</label>
-        <div class="zint-secret-input" id="zintTokenInputWrap">
-          <input class="input" id="zintToken" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" placeholder="Cole o token aqui">
+        <label for="zintToken">Token / chave privada</label>
+        <div class="zint-secret-input">
+          <input class="input" id="zintToken" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" placeholder="Cole o token aqui" required>
           <button type="button" class="btn btn-soft" id="zintToggleSecret">Mostrar</button>
         </div>
-        <textarea class="input zint-json-secret hidden" id="zintTokenJson" rows="10" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder='Cole aqui o JSON completo da credencial Efí'></textarea>
-        <div class="mini" id="zintTokenHint">O token precisa ter pelo menos 20 caracteres. Espaços no início ou no final serão removidos.</div>
+        <div class="mini">O token precisa ter pelo menos 20 caracteres. Espaços no início ou no final serão removidos.</div>
       </div>
 
       <div class="zint-security">
@@ -164,32 +163,16 @@ function zielOpenTokenModal(walletId,provider=''){
   `);
 
   const token=$('zintToken');
-  const tokenJson=$('zintTokenJson');
-  const tokenInputWrap=$('zintTokenInputWrap');
-  const tokenHint=$('zintTokenHint');
   const providerSelect=$('zintProvider');
   const paintProviderHelp=()=>{
     const p=providerSelect.value;
-    const label=$('zintTokenLabel');
-    const efiJson=p==='efi';
-
-    tokenInputWrap.classList.toggle('hidden',efiJson);
-    tokenJson.classList.toggle('hidden',!efiJson);
-
-    if(label)label.textContent=efiJson
-      ?'Credencial Efí (JSON)'
-      :p==='lytex'
-        ?'Pacote de autenticação Lytex (JSON)'
-        :'Token / chave privada';
-
+    const label=document.querySelector('label[for="zintToken"]');
+    if(label)label.textContent=p==='lytex'?'Pacote de autenticação Lytex (JSON)':'Token / chave privada';
     token.placeholder=p==='lytex'?'Cole aqui o JSON completo retornado pela Lytex':'Cole o token aqui';
-    if(tokenHint)tokenHint.textContent=efiJson
-      ?'Cole o objeto JSON completo da credencial Efí. O ZIEL valida o JSON antes de salvar e guarda o conteúdo criptografado.'
-      :'O token precisa ter pelo menos 20 caracteres. Espaços no início ou no final serão removidos.';
     const messages={
       mercado_pago:'<strong>Mercado Pago:</strong> use o <b>Access Token de produção</b> da conta correspondente a esta carteira.',
       asaas:'<strong>Asaas:</strong> use a credencial da conta Asaas correspondente a esta carteira.',
-      efi:'<strong>Efí:</strong> cole o <b>JSON completo da credencial</b> correspondente a esta carteira. O conteúdo será validado como JSON e armazenado criptografado.',
+      efi:'<strong>Efí:</strong> use a credencial da conta Efí correspondente a esta carteira.',
       lytex:'<strong>Lytex:</strong> cole o <b>JSON completo</b> retornado pela autenticação, contendo <code>accessToken</code>, <code>refreshToken</code>, <code>expireAt</code> e <code>refreshExpireAt</code>. O ZIEL renovará o access token automaticamente.',
       sgp:'<strong>SGP:</strong> use a credencial da integração correspondente a esta carteira.',
       outro:'<strong>Atenção:</strong> confirme que a credencial pertence exatamente à conta representada por esta carteira.'
@@ -209,20 +192,8 @@ function zielOpenTokenModal(walletId,provider=''){
 
   $('zintTokenForm').onsubmit=async e=>{
     e.preventDefault();
+    let value=token.value.trim();
     const providerValue=$('zintProvider').value;
-    let value=(providerValue==='efi'?tokenJson.value:token.value).trim();
-
-    if(providerValue==='efi'){
-      try{
-        const parsed=JSON.parse(value);
-        if(!parsed||typeof parsed!=='object'||Array.isArray(parsed)){
-          return toast('Para Efí, cole um objeto JSON válido.','error');
-        }
-        value=JSON.stringify(parsed);
-      }catch(_){
-        return toast('A credencial Efí precisa ser um JSON válido. Cole o objeto completo.','error');
-      }
-    }
 
     if(providerValue==='lytex'){
       try{
@@ -264,7 +235,6 @@ function zielOpenTokenModal(walletId,provider=''){
       }
       if(error)throw error;
       token.value='';
-      tokenJson.value='';
       closeModal();
       await zielLoadWalletIntegrations();
       if(document.querySelector('.nav button.active')?.dataset.page==='integracoes')zielPaintIntegrations();
@@ -280,7 +250,7 @@ function zielOpenTokenModal(walletId,provider=''){
     }
   };
 
-  (providerSelect.value==='efi'?tokenJson:token).focus();
+  token.focus();
 }
 
 async function zielTestIntegration(walletId,provider){

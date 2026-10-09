@@ -6,12 +6,12 @@ zielLoadIncomingIntegrations = async function(){
   const {data,error}=await supabase.rpc('list_wallet_integrations');
   if(error)throw error;
   zielIncomingIntegrations=(Array.isArray(data)?data:[])
-    .filter(i=>i.enabled!==false&&['mercado_pago','asaas','efi','lytex'].includes(i.provider));
+    .filter(i=>i.enabled!==false&&['mercado_pago','asaas','lytex'].includes(i.provider));
   return zielIncomingIntegrations;
 };
 
 zielIncomingProviderSupported = function(provider){
-  return ['mercado_pago','asaas','efi','lytex'].includes(provider);
+  return ['mercado_pago','asaas','lytex'].includes(provider);
 };
 
 zielIncomingPaintWallet = function(){
@@ -22,7 +22,7 @@ zielIncomingPaintWallet = function(){
 
   if(!walletId){
     if(note){
-      note.textContent='Selecione uma carteira com Mercado Pago, Asaas, Efí ou Lytex configurado.';
+      note.textContent='Selecione uma carteira com Mercado Pago, Asaas ou Lytex configurado.';
       note.className='mini';
     }
     if(button)button.disabled=true;
@@ -40,19 +40,15 @@ zielIncomingPaintWallet = function(){
     return;
   }
 
-  const integration=integrations[0];
-  const provider=integration.provider;
+  const provider=integrations[0].provider;
   const supported=zielIncomingProviderSupported(provider);
-  const efiReady=provider!=='efi'||integration.credential_profile==='efi_pix';
   if(note){
-    note.textContent=!supported
-      ?zielIncomingProviderLabel(provider)+' ainda não possui conector de consulta.'
-      :!efiReady
-        ?'Efí · configuração incompleta. Informe Client ID, Client Secret e certificado P12 em Integrações / Tokens.'
-        :zielIncomingProviderLabel(provider)+' · consulta manual de recebimentos usando a credencial protegida desta carteira.';
-    note.className=supported&&efiReady?'mini g':'mini r';
+    note.textContent=supported
+      ?zielIncomingProviderLabel(provider)+' · consulta manual de recebimentos usando a credencial protegida desta carteira.'
+      :zielIncomingProviderLabel(provider)+' ainda não possui conector de consulta.';
+    note.className=supported?'mini g':'mini r';
   }
-  if(button)button.disabled=zielIncomingQueryInFlight||!supported||!efiReady;
+  if(button)button.disabled=zielIncomingQueryInFlight||!supported;
 };
 
 zielRunIncomingQuery = async function(){
@@ -71,13 +67,9 @@ zielRunIncomingQuery = async function(){
     );
   }
 
-  const integration=integrations[0];
-  const provider=integration.provider;
+  const provider=integrations[0].provider;
   if(!zielIncomingProviderSupported(provider)){
     return toast('A consulta de '+zielIncomingProviderLabel(provider)+' ainda não está disponível.','error');
-  }
-  if(provider==='efi'&&integration.credential_profile!=='efi_pix'){
-    return toast('Efí precisa de Client ID, Client Secret e certificado P12. Configure em Integrações / Tokens.','error');
   }
 
   const {from,to}=zielIncomingQueryDates();
@@ -100,9 +92,7 @@ zielRunIncomingQuery = async function(){
   try{
     const functionName=provider==='lytex'
       ?'wallet-integration-query-lytex'
-      :provider==='efi'
-        ?'wallet-integration-query-efi'
-        :'wallet-integration-query';
+      :'wallet-integration-query';
 
     const {data,error}=await supabase.functions.invoke(functionName,{
       body:{
@@ -339,7 +329,7 @@ renderIncomingEntries = async function(seq=zielIncomingRenderSeq){
     const wallets=zielIncomingConfiguredWallets();
     $('zinQueryWallet').innerHTML=wallets.length
       ?zielIncomingWalletOptions(wallets[0]?.id||'')
-      :'<option value="">Nenhuma carteira Mercado Pago, Asaas, Efí ou Lytex com integração ativa</option>';
+      :'<option value="">Nenhuma carteira Mercado Pago, Asaas ou Lytex com token ativo</option>';
     $('zinQueryWallet').disabled=!wallets.length;
 
     $('zinWalletFilter').innerHTML='<option value="">Todas</option>'+

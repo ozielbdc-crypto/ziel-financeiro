@@ -599,7 +599,7 @@ function zielIncomingWalletOptions(selected=''){
 }
 
 function zielIncomingProviderSupported(provider){
-  return ['mercado_pago','asaas','efi','lytex'].includes(provider);
+  return ['mercado_pago','asaas','lytex'].includes(provider);
 }
 
 function zielIncomingPaintWallet(){
@@ -693,9 +693,7 @@ async function zielRunIncomingQuery(){
   try{
     const functionName=provider==='lytex'
       ?'wallet-integration-query-lytex'
-      :provider==='efi'
-        ?'wallet-integration-query-efi'
-        :'wallet-integration-query';
+      :'wallet-integration-query';
 
     const reusableSettlementTask=
       provider==='mercado_pago'&&
