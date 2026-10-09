@@ -964,3 +964,15 @@ input[type="number"]::-webkit-inner-spin-button{
   .payment-detail-summary>div:first-child{grid-column:auto}
   .payment-detail-row-head{align-items:flex-start;flex-direction:column}
 }
+
+
+/* Credencial JSON Efí */
+.zint-json-secret{
+  min-height:210px;
+  resize:vertical;
+  font-family:ui-monospace,SFMono-Regular,Consolas,Monaco,monospace;
+  font-size:12px;
+  line-height:1.45;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere
+}
