@@ -325,16 +325,17 @@ function zielIncomingOpenTransferConfirm(id){
       host.innerHTML=openPayables.length?'Selecione a conta que originou esta saída.':'Não há contas em aberto neste negócio.';
       return;
     }
-    const after=Math.round((p.open_amount-amount)*100)/100;
-    const tooLarge=amount>p.open_amount+.009;
+    const after=Math.max(0,Math.round((p.open_amount-amount)*100)/100);
+    const interest=Math.max(0,Math.round((amount-p.open_amount)*100)/100);
     const partial=amount<p.open_amount-.009;
-    host.innerHTML=`<div class="zin-payable-match ${tooLarge?'error':partial?'partial':'ok'}">
+    host.innerHTML=`<div class="zin-payable-match ${interest>.009?'interest':partial?'partial':'ok'}">
       <div><small>Fornecedor</small><strong>${esc(p.supplier||'—')}</strong></div>
       <div><small>Descrição</small><strong>${esc(p.description||'—')}</strong></div>
       <div><small>Vencimento</small><strong>${esc(br(p.due_date))}</strong></div>
       <div><small>Saldo em aberto</small><strong>${fmt(p.open_amount)}</strong></div>
-      <div><small>Transferência</small><strong>${fmt(amount)}</strong></div>
-      <div><small>Após a baixa</small><strong class="${tooLarge?'r':''}">${tooLarge?'Transferência maior que a conta':partial?fmt(after):'Quitada'}</strong></div>
+      <div><small>Valor movimentado</small><strong>${fmt(amount)}</strong></div>
+      <div><small>Após a baixa</small><strong>${partial?fmt(after):'Quitada'}</strong></div>
+      ${interest>.009?`<div><small>Juros / acréscimo</small><strong class="a">${fmt(interest)}</strong></div>`:''}
     </div>`;
   };
 
@@ -351,7 +352,7 @@ function zielIncomingOpenTransferConfirm(id){
       paintPayable();
       const p=selectedPayable();
       $('zinTransferNote').innerHTML=p
-        ?`O ZIEL usará esta movimentação do Mercado Pago para <b>baixar a conta já cadastrada</b>. Não será criada uma segunda despesa. Se o valor for menor que o saldo em aberto, a baixa será parcial. O ID externo <b>${esc(row.external_id||'—')}</b> ficará vinculado e não poderá ser utilizado novamente.`
+        ?`O ZIEL usará esta movimentação do Mercado Pago para <b>baixar a conta já cadastrada</b>. Não será criada uma segunda despesa. Se o valor for menor que o saldo em aberto, a baixa será parcial. Se for maior, a diferença será registrada como <b>juros/acréscimo</b>. O ID externo <b>${esc(row.external_id||'—')}</b> ficará vinculado e não poderá ser utilizado novamente.`
         :`Selecione uma conta em aberto. O ZIEL não criará uma nova despesa: esta saída será vinculada diretamente à conta escolhida.`;
       return;
     }
@@ -378,7 +379,6 @@ function zielIncomingOpenTransferConfirm(id){
 
     if(internal&&!counterpart)return toast('Selecione a outra carteira da transferência.','error');
     if(payableMode&&!payable)return toast('Selecione a conta a pagar correspondente.','error');
-    if(payableMode&&amount>payable.open_amount+.009)return toast('A transferência é maior que o saldo em aberto da conta selecionada.','error');
     if(!internal&&!payableMode&&!category)return toast('Selecione a categoria.','error');
     if(!payableMode&&!description)return toast('Informe a descrição.','error');
 
