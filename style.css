@@ -976,3 +976,32 @@ input[type="number"]::-webkit-inner-spin-button{
   white-space:pre-wrap;
   overflow-wrap:anywhere
 }
+
+
+/* Configuração completa da API Pix Efí */
+.zefi-intro{
+  display:grid;
+  gap:5px;
+  padding:12px 13px;
+  border:1px solid #d9e5f0;
+  border-left:4px solid var(--orange);
+  border-radius:10px;
+  background:#fbfdff
+}
+.zefi-intro strong{font-size:13px;color:var(--navy2)}
+.zefi-intro span{font-size:11px;color:var(--muted);line-height:1.5}
+.zefi-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.zefi-grid .field{margin:0}
+.zefi-file{padding:9px}
+.zefi-incomplete{
+  border-color:#f1cfad;
+  background:#fffaf5
+}
+.zefi-incomplete .zint-provider-icon{
+  background:#fff0e2;
+  color:#b95000
+}
+@media(max-width:600px){
+  .zefi-grid{grid-template-columns:1fr}
+  .zefi-grid .span-2{grid-column:auto}
+}
