@@ -498,3 +498,48 @@
   .zin-quick-launch{align-items:stretch;flex-direction:column}
   .zin-quick-launch .btn{width:100%}
 }
+
+
+/* Classificação de movimentações específicas do Account Money */
+.zam-table-actions{min-width:1120px}
+.zam-action-cell{min-width:155px}
+.zam-action-cell .btn{
+  width:100%;
+  min-height:34px;
+  padding:7px 9px;
+  font-size:10px;
+  white-space:normal;
+  line-height:1.25
+}
+.zam-receipt-flow{
+  display:inline-block;
+  max-width:150px;
+  padding:6px 8px;
+  border-radius:7px;
+  background:#eef4fa;
+  color:#52677b;
+  font-size:9px;
+  line-height:1.35;
+  text-align:center
+}
+.zam-classification-source{
+  display:grid;
+  gap:4px;
+  padding:10px 11px;
+  border:1px solid #f0d7bd;
+  border-left:4px solid var(--orange);
+  border-radius:9px;
+  background:#fff8f1
+}
+.zam-classification-source strong{
+  font-size:11px;
+  color:#7a470f
+}
+.zam-classification-source span{
+  font-size:10px;
+  line-height:1.45;
+  color:#765a3c
+}
+@media(max-width:700px){
+  .zam-action-cell{min-width:140px}
+}
