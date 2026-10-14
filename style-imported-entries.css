@@ -354,3 +354,83 @@
   background:#edf5fb;
   color:#245a8d
 }
+
+
+/* Account Money Report tratado */
+.zin-query-action{gap:8px;flex-wrap:wrap}
+.zin-query-action #zinAccountMoneyButton{min-width:210px}
+.zam-modal{width:min(1180px,96vw)}
+.zam-report{display:grid;gap:14px;min-width:0}
+.zam-report-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.zam-report-head>div{min-width:0}
+.zam-report-badge{
+  display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;
+  background:var(--orange-soft);color:var(--orange-dark);
+  font-size:9px;font-weight:900;letter-spacing:.06em
+}
+.zam-report-head h3{margin:6px 0 2px;font-size:20px;color:var(--navy2)}
+.zam-report-head p{margin:0;font-size:11px;color:var(--muted)}
+.zam-summary{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px
+}
+.zam-summary>div{
+  display:grid;gap:5px;padding:12px;border:1px solid #dfe7ef;border-radius:10px;background:#fbfdff
+}
+.zam-summary small{
+  font-size:9px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:var(--muted)
+}
+.zam-summary strong{font-size:18px}
+.zam-note{
+  display:flex;gap:6px;align-items:flex-start;padding:10px 12px;
+  border:1px solid #d7e4ef;border-left:4px solid var(--blue);
+  border-radius:9px;background:#f7fbfe;color:#49637a;font-size:11px;line-height:1.5
+}
+.zam-note strong{color:var(--navy2);flex:0 0 auto}
+.zam-report-meta{
+  display:flex;flex-wrap:wrap;gap:8px 16px;padding:9px 11px;
+  border-radius:9px;background:#f3f6f9;color:var(--muted);font-size:10px
+}
+.zam-table-wrap{
+  overflow:auto;border:1px solid #dce5ed;border-radius:10px;max-height:56vh
+}
+.zam-table{
+  width:100%;min-width:980px;border-collapse:collapse;background:#fff
+}
+.zam-table th,.zam-table td{
+  padding:9px 10px;border-bottom:1px solid #e7edf3;text-align:left;font-size:11px;vertical-align:top
+}
+.zam-table th{
+  position:sticky;top:0;z-index:1;background:#eef4fa;color:#27415a;font-size:10px
+}
+.zam-table td small{display:block;margin-top:3px;color:var(--muted);font-size:9px;overflow-wrap:anywhere}
+.zam-table td strong{font-size:11px;overflow-wrap:anywhere}
+.zam-kind{
+  display:inline-flex;align-items:center;padding:4px 7px;border-radius:999px;
+  font-size:9px;font-weight:850;white-space:nowrap
+}
+.zam-kind.income{background:#e7f7ef;color:#14734d}
+.zam-kind.expense{background:#ffe8eb;color:#9e2333}
+.zam-kind.fee{background:#fff1e5;color:#9b4d06}
+.zam-kind.transfer{background:#e8f1fa;color:#245a8d}
+.zam-kind.neutral{background:#edf1f5;color:#5c6c7a}
+.zam-pending{
+  display:flex;gap:12px;align-items:flex-start;padding:14px;
+  border:1px solid #f0d7bd;border-radius:10px;background:#fff8f1;color:#6f4b29
+}
+.zam-spinner{
+  display:grid;place-items:center;width:38px;height:38px;border-radius:50%;
+  background:var(--orange-soft);color:var(--orange-dark);font-size:20px;font-weight:900;flex:0 0 auto
+}
+.zam-pending strong{display:block;color:#70420e}
+.zam-pending p{margin:4px 0;font-size:11px;line-height:1.5}
+.zam-pending span{font-size:10px;color:#86684a}
+@media(max-width:800px){
+  .zam-summary{grid-template-columns:1fr 1fr}
+  .zam-report-head{flex-direction:column}
+  .zam-report-head .btn{width:100%}
+}
+@media(max-width:520px){
+  .zam-summary{grid-template-columns:1fr}
+  .zam-note{display:grid}
+  .zin-query-action #zinAccountMoneyButton{width:100%;min-width:0}
+}
