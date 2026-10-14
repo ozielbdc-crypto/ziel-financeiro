@@ -5,12 +5,6 @@ let zielIncomingRenderSeq=0;
 let zielIncomingIntegrations=[];
 let zielIncomingLastQuery=null;
 let zielIncomingQueryInFlight=false;
-let zielIncomingRequestedWalletId='';
-
-function zielOpenIncomingEntriesForWallet(walletId){
-  zielIncomingRequestedWalletId=String(walletId||'');
-  showPage('entradas-importadas');
-}
 
 function zielIncomingProviderLabel(provider){
   return {
@@ -696,7 +690,7 @@ async function zielRunIncomingQuery(){
   const btn=$('zinQueryButton');
   zielIncomingQueryInFlight=true;
   btn.disabled=true;
-  btn.textContent='Consultando entradas…';
+  btn.textContent='Consultando movimentações…';
 
   try{
     const functionName=provider==='lytex'
@@ -793,7 +787,7 @@ async function zielRunIncomingQuery(){
     if($('zinQueryButton'))$('zinQueryButton').textContent=
       zielIncomingLastQuery?.transfers_pending&&zielIncomingLastQuery?.transfer_task_id
         ?'Consultar novamente'
-        :'Consultar entradas';
+        :'Consultar movimentações';
   }
 }
 
@@ -846,7 +840,7 @@ function zielPaintIncoming(){
     if($('zinPending'))$('zinPending').textContent='—';
     if($('zinConfirmed'))$('zinConfirmed').textContent='—';
     if($('zinIgnored'))$('zinIgnored').textContent='—';
-    host.innerHTML='<div class="zin-manual-empty"><strong>Nenhuma consulta realizada.</strong><span>Escolha a carteira, o dia ou período e clique em <b>Consultar entradas</b>. O histórico não é carregado automaticamente.</span></div>';
+    host.innerHTML='<div class="zin-manual-empty"><strong>Nenhuma consulta realizada.</strong><span>Escolha a carteira, o dia ou período e clique em <b>Consultar movimentações</b>. O histórico não é carregado automaticamente.</span></div>';
     return;
   }
 
@@ -955,7 +949,7 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
             </div>
 
             <div class="zin-query-action">
-              <button type="button" class="btn btn-primary" id="zinQueryButton" disabled>Consultar entradas</button>
+              <button type="button" class="btn btn-primary" id="zinQueryButton" disabled>Consultar movimentações</button>
             </div>
           </div>
         </div>
@@ -1023,15 +1017,10 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
     if(seq!==zielIncomingRenderSeq)return;
 
     const wallets=zielIncomingConfiguredWallets();
-    const requestedWallet=wallets.some(w=>w.id===zielIncomingRequestedWalletId)
-      ?zielIncomingRequestedWalletId
-      :(wallets[0]?.id||'');
     $('zinQueryWallet').innerHTML=wallets.length
-      ?zielIncomingWalletOptions(requestedWallet)
+      ?zielIncomingWalletOptions(wallets[0]?.id||'')
       :'<option value="">Nenhuma carteira com integração ativa</option>';
     $('zinQueryWallet').disabled=!wallets.length;
-    if(requestedWallet)$('zinQueryWallet').value=requestedWallet;
-    zielIncomingRequestedWalletId='';
 
     $('zinWalletFilter').innerHTML='<option value="">Todas</option>'+
       wallets.map(w=>`<option value="${esc(w.id)}">${esc(businessName(w.business_id))} — ${esc(w.name)}</option>`).join('');
