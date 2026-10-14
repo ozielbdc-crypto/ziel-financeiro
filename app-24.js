@@ -70,8 +70,11 @@ function zielIntegrationRow(wallet,integration){
       </div>
     </div>
     <div class="zint-provider-actions">
+      ${['mercado_pago','asaas','efi','lytex'].includes(integration.provider)&&integration.enabled!==false
+        ?`<button type="button" class="btn btn-primary" data-zint-query="${esc(wallet.id)}">Consultar entradas</button>`
+        :''}
       ${['mercado_pago','asaas','lytex'].includes(integration.provider)&&integration.enabled!==false
-        ?`<button type="button" class="btn btn-primary" data-zint-test="${esc(wallet.id)}" data-zint-provider="${esc(integration.provider)}">Testar conexão</button>`
+        ?`<button type="button" class="btn btn-soft" data-zint-test="${esc(wallet.id)}" data-zint-provider="${esc(integration.provider)}">Testar conexão</button>`
         :''}
       <button type="button" class="btn btn-soft" data-zint-edit="${esc(wallet.id)}" data-zint-provider="${esc(integration.provider)}">Atualizar token</button>
       <button type="button" class="btn btn-soft" data-zint-toggle="${esc(wallet.id)}" data-zint-provider="${esc(integration.provider)}" data-zint-enabled="${integration.enabled!==false?'1':'0'}">${integration.enabled!==false?'Pausar':'Ativar'}</button>
@@ -384,6 +387,11 @@ async function zielRemoveIntegration(walletId,provider){
 
 function zielBindIntegrationActions(){
   document.querySelectorAll('[data-zint-add]').forEach(btn=>btn.onclick=()=>zielOpenTokenModal(btn.dataset.zintAdd));
+  document.querySelectorAll('[data-zint-query]').forEach(btn=>btn.onclick=()=>{
+    const walletId=btn.dataset.zintQuery;
+    if(typeof zielOpenIncomingEntriesForWallet==='function')zielOpenIncomingEntriesForWallet(walletId);
+    else showPage('entradas-importadas');
+  });
   document.querySelectorAll('[data-zint-test]').forEach(btn=>btn.onclick=()=>zielTestIntegration(btn.dataset.zintTest,btn.dataset.zintProvider));
   document.querySelectorAll('[data-zint-edit]').forEach(btn=>btn.onclick=()=>zielOpenTokenModal(btn.dataset.zintEdit,btn.dataset.zintProvider));
   document.querySelectorAll('[data-zint-toggle]').forEach(btn=>btn.onclick=()=>zielToggleIntegration(btn.dataset.zintToggle,btn.dataset.zintProvider,btn.dataset.zintEnabled==='1'));
