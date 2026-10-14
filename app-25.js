@@ -139,14 +139,12 @@ function zielIncomingCard(row){
   const direction=isMoneyTransfer?'Saída':row.direction;
   const directionKnown=!isTransfer||direction==='Entrada'||direction==='Saída';
   const isCard=!isTransfer&&['credit_card','debit_card','prepaid_card'].includes(String(row.payment_type_id||'').toLowerCase());
-  const isPix=(
+  const isPix=!isTransfer&&(
     String(row.payment_method_id||'').toLowerCase()==='pix'||
     String(row.payment_type_id||'').toLowerCase()==='bank_transfer'||
     String(row.payment_method||'').toLowerCase().includes('pix')
   );
-  const pixChannel=isPix
-    ?String(row.pix_receipt_channel||(isTransfer&&direction==='Entrada'?'Pix direto / via chave':'Pix'))
-    :'';
+  const pixChannel=isPix?String(row.pix_receipt_channel||'Pix'):'';
   const released=row.available_for_balance!==false;
   const linkedPayable=row.linked_payable_id?(state.payables||[]).find(p=>p.id===row.linked_payable_id):null;
   let actions='';
@@ -857,7 +855,6 @@ function zielPaintIncoming(){
     if(row.wallet_id!==zielIncomingLastQuery.wallet_id)return false;
     if(zielIncomingLastQuery.provider&&row.provider!==zielIncomingLastQuery.provider)return false;
     if(zielIncomingLastQuery.payments_only===true&&row.movement_kind==='transfer')return false;
-    if(zielIncomingLastQuery.incoming_only===true&&row.movement_kind==='transfer'&&row.direction!=='Entrada')return false;
     const key=zielIncomingDateKey(row.approved_at||row.occurred_at);
     return !!key&&key>=queryRange.from&&key<=queryRange.to;
   });
