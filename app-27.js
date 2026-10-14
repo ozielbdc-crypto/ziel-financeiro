@@ -96,12 +96,25 @@ zielRunIncomingQuery = async function(){
         ?'wallet-integration-query-efi'
         :'wallet-integration-query';
 
+    const includeBalanceMovements=provider==='mercado_pago';
+    const reusableSettlementTask=
+      includeBalanceMovements&&
+      zielIncomingLastQuery?.wallet_id===walletId&&
+      zielIncomingLastQuery?.provider===provider&&
+      zielIncomingLastQuery?.date_from===from&&
+      zielIncomingLastQuery?.date_to===to&&
+      zielIncomingLastQuery?.transfers_pending===true&&
+      zielIncomingLastQuery?.transfer_task_id
+        ?String(zielIncomingLastQuery.transfer_task_id)
+        :'';
+
     const {data,error}=await supabase.functions.invoke(functionName,{
       body:{
         wallet_id:walletId,
         date_from:from,
         date_to:to,
-        payments_only:true
+        payments_only:!includeBalanceMovements,
+        settlement_task_id:reusableSettlementTask||undefined
       }
     });
 
@@ -128,20 +141,23 @@ zielRunIncomingQuery = async function(){
 
     const periodRows=zielIncomingRows.filter(row=>{
       if(row.wallet_id!==walletId||row.provider!==provider)return false;
-      if(row.movement_kind==='transfer')return false;
+      if(row.movement_kind==='transfer'&&row.direction!=='Entrada')return false;
       const key=zielIncomingDateKey(row.approved_at||row.occurred_at);
       return !!key&&key>=from&&key<=to;
     });
 
-    const paymentRows=[...new Map(periodRows.map(row=>[
+    const entryRows=[...new Map(periodRows.map(row=>[
       String(row.provider||'')+'|'+String(row.external_id||row.id||''),
       row
     ])).values()];
 
-    const grossTotal=paymentRows.reduce((sum,row)=>sum+Number(row.gross_amount??row.amount??0),0);
-    const netTotal=paymentRows.reduce((sum,row)=>sum+Number(row.net_amount??row.gross_amount??row.amount??0),0);
-    const feeTotal=paymentRows.reduce((sum,row)=>sum+Number(row.fee_amount??0),0);
-    const awaiting=paymentRows.filter(row=>row.available_for_balance===false).length;
+    const paymentRows=entryRows.filter(row=>row.movement_kind!=='transfer');
+    const directIncomingRows=entryRows.filter(row=>row.movement_kind==='transfer'&&row.direction==='Entrada');
+
+    const grossTotal=entryRows.reduce((sum,row)=>sum+Number(row.gross_amount??row.amount??0),0);
+    const netTotal=entryRows.reduce((sum,row)=>sum+Number(row.net_amount??row.gross_amount??row.amount??0),0);
+    const feeTotal=entryRows.reduce((sum,row)=>sum+Number(row.fee_amount??0),0);
+    const awaiting=entryRows.filter(row=>row.available_for_balance===false).length;
 
     zielIncomingLastQuery={
       ...data,
@@ -149,11 +165,14 @@ zielRunIncomingQuery = async function(){
       provider,
       date_from:from,
       date_to:to,
-      payments_only:true,
-      payments_found:paymentRows.length,
-      transfers_found:0,
+      payments_only:false,
+      incoming_only:true,
+      payments_found:entryRows.length,
+      checkout_payments_found:paymentRows.length,
+      direct_incoming_found:directIncomingRows.length,
+      transfers_found:directIncomingRows.length,
       outgoing_transfers_found:0,
-      incoming_transfers_found:0,
+      incoming_transfers_found:directIncomingRows.length,
       ambiguous_transfers_found:0,
       period_gross_total:Math.round(grossTotal*100)/100,
       period_net_total:Math.round(netTotal*100)/100,
@@ -171,7 +190,7 @@ zielRunIncomingQuery = async function(){
 
     toast(
       'Consulta '+zielIncomingProviderLabel(provider)+' concluída: '+
-      paymentRows.length+' recebimento(s), '+
+      entryRows.length+' entrada(s), '+
       Number(zielIncomingLastQuery.new_entries||0)+' novo(s) e '+
       Number(zielIncomingLastQuery.updated_entries||0)+' já conhecido(s)/atualizado(s).'
     );
@@ -179,7 +198,10 @@ zielRunIncomingQuery = async function(){
     toast('Consulta falhou: '+(error?.message||'erro desconhecido'),'error');
   }finally{
     zielIncomingQueryInFlight=false;
-    if($('zinQueryButton'))$('zinQueryButton').textContent='Consultar entradas';
+    if($('zinQueryButton'))$('zinQueryButton').textContent=
+      zielIncomingLastQuery?.transfers_pending&&zielIncomingLastQuery?.transfer_task_id
+        ?'Consultar novamente'
+        :'Consultar entradas';
     zielIncomingPaintWallet();
   }
 };
@@ -202,6 +224,7 @@ zielPaintQueryResult = function(){
     <div><small>Instituição</small><strong>${esc(providerLabel)}</strong><span class="mini">Credencial protegida da carteira</span></div>
     <div><small>Período consultado</small><strong>${esc(br(q.date_from))}${q.date_from!==q.date_to?' até '+esc(br(q.date_to)):''}</strong></div>
     <div><small>Entradas encontradas</small><strong>${Number(q.payments_found||0)}</strong></div>
+    <div><small>Recebimentos diretos no saldo</small><strong class="g">${Number(q.direct_incoming_found||0)}</strong></div>
     <div class="zin-query-total"><small>${q.date_from===q.date_to?'Total bruto do dia':'Total bruto no período'}</small><strong class="g">${fmt(Number(q.period_gross_total||0))}</strong></div>
     <div><small>Total líquido</small><strong>${fmt(Number(q.period_net_total??q.period_gross_total??0))}</strong></div>
     <div><small>Taxas / deduções</small><strong class="r">${fmt(Number(q.period_fee_total||0))}</strong></div>
@@ -209,7 +232,8 @@ zielPaintQueryResult = function(){
     <div><small>Já conhecidas</small><strong>${Number(q.updated_entries||0)}</strong></div>
     <div><small>Aguardando liberação</small><strong class="a">${Number(q.awaiting_release||0)}</strong></div>
   </div>
-  <p class="mini">A consulta é manual. Nenhuma entrada vira lançamento sem sua confirmação. O ZIEL usa <b>provedor + ID externo</b> para impedir duplicidade ao consultar novamente e ao lançar.</p>`;
+  ${q.transfers_pending?'<div class="message"><strong>Movimentações de saldo em processamento.</strong> O Mercado Pago gera esse relatório de forma assíncrona. Clique em <b>Consultar novamente</b> para continuar a mesma consulta e captar Pix recebido diretamente por chave.</div>':''}
+  <p class="mini">A consulta é manual. Nenhuma entrada vira lançamento sem sua confirmação. O ZIEL consulta pagamentos e, no Mercado Pago, também recebimentos diretos no saldo. A combinação <b>instituição + ID externo</b> impede duplicidade ao consultar novamente e ao lançar.</p>`;
 };
 
 renderIncomingEntries = async function(seq=zielIncomingRenderSeq){
@@ -220,7 +244,7 @@ renderIncomingEntries = async function(seq=zielIncomingRenderSeq){
 
   $('content').innerHTML=setTitle(
     'Consultar entradas',
-    'Mercado Pago, Asaas, Efí e Lytex · consulta manual por dia ou período e lançamento somente após confirmação'
+    'Mercado Pago, Asaas, Efí e Lytex · pagamentos e Pix recebidos por chave, com lançamento somente após confirmação'
   )+`
     <div class="zin-page">
       <section class="zin-query-card">
@@ -229,7 +253,7 @@ renderIncomingEntries = async function(seq=zielIncomingRenderSeq){
             <span class="zin-auto-icon">⌕</span>
             <div>
               <strong>Consultar entradas da carteira</strong>
-              <p>Escolha a carteira e o período. O ZIEL usa automaticamente o conector da instituição vinculada àquela carteira.</p>
+              <p>Escolha a carteira e o período. No Mercado Pago, o ZIEL consulta pagamentos e também movimentações positivas do saldo para localizar Pix recebido diretamente por chave.</p>
             </div>
           </div>
           <span class="zin-manual-badge">MANUAL</span>
