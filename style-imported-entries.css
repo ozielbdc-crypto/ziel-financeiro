@@ -434,3 +434,51 @@
   .zam-note{display:grid}
   .zin-query-action #zinAccountMoneyButton{width:100%;min-width:0}
 }
+
+
+/* Seleção e lançamento em lote */
+.zin-batch-bar{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:12px 14px;margin:12px 0;border:1px solid #dce6ef;border-left:5px solid var(--orange);
+  border-radius:11px;background:#fff;box-shadow:var(--shadow)
+}
+.zin-batch-info{display:grid;gap:2px;min-width:150px}
+.zin-batch-info strong{font-size:14px;color:var(--navy2)}
+.zin-batch-info span{font-size:18px;font-weight:800;color:var(--orange-dark)}
+.zin-batch-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.zin-batch-actions .btn{font-size:11px;min-height:38px}
+.zin-select-entry{
+  display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 10px;
+  border:1px solid #e0e8f0;border-radius:8px;background:#f8fbfe;cursor:pointer;
+  font-size:11px;font-weight:800;color:#3c5870
+}
+.zin-select-entry:hover{border-color:#f1b27b;background:#fff8f2}
+.zin-select-entry input{width:17px;height:17px;accent-color:var(--orange);cursor:pointer}
+.zin-batch-confirm{display:grid;gap:14px}
+.zin-batch-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.zin-batch-summary>div{
+  display:grid;gap:4px;padding:11px;border:1px solid #dfe7ef;border-radius:9px;background:#fbfdff
+}
+.zin-batch-summary small{font-size:9px;font-weight:800;letter-spacing:.04em;color:var(--muted)}
+.zin-batch-summary strong{font-size:17px;overflow-wrap:anywhere}
+.zin-batch-preview{
+  display:grid;gap:7px;max-height:280px;overflow:auto;padding:10px;
+  border:1px solid #dfe7ef;border-radius:9px;background:#f9fbfd
+}
+.zin-batch-preview>div{
+  display:grid;grid-template-columns:130px 100px minmax(0,1fr);gap:10px;align-items:center;
+  padding:8px 9px;border-radius:7px;background:#fff;border:1px solid #e8eef4
+}
+.zin-batch-preview span,.zin-batch-preview small{font-size:10px;color:var(--muted)}
+.zin-batch-preview strong{font-size:12px;color:var(--navy2)}
+@media(max-width:760px){
+  .zin-batch-bar{align-items:flex-start;flex-direction:column}
+  .zin-batch-actions{display:grid;grid-template-columns:1fr;width:100%}
+  .zin-batch-actions .btn{width:100%}
+  .zin-batch-summary{grid-template-columns:1fr 1fr}
+  .zin-batch-preview>div{grid-template-columns:1fr auto}
+  .zin-batch-preview>div small{grid-column:1/-1}
+}
+@media(max-width:420px){
+  .zin-batch-summary{grid-template-columns:1fr}
+}
