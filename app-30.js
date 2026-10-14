@@ -3,6 +3,8 @@
 
 let zielAccountMoneyTasks={};
 let zielAccountMoneyLast=null;
+let zielAccountMoneyPollTimer=null;
+let zielAccountMoneyPollAttempts={};
 
 function zielAccountMoneyTaskKey(walletId,from,to){
   return [walletId,from,to].join('|');
@@ -23,7 +25,7 @@ function zielAccountMoneyPaintButton(){
   const visible=provider==='mercado_pago';
   btn.classList.toggle('hidden',!visible);
   btn.disabled=!visible||!walletId;
-  if(visible)btn.title='Gerar o Account Money Report tratado deste período';
+  if(visible)btn.title='Consultar entradas e saídas que afetaram o saldo desta conta';
 }
 
 function zielAccountMoneyEscCsv(value){
@@ -72,7 +74,7 @@ function zielAccountMoneyRenderReport(data,wallet){
   const visible=rows.slice(0,500);
   const totals=data.totals||{};
 
-  modal('Account Money Report — Mercado Pago',`
+  modal('Movimentações da conta — Mercado Pago',`
     <div class="zam-report">
       <div class="zam-report-head">
         <div>
@@ -122,7 +124,7 @@ function zielAccountMoneyRenderReport(data,wallet){
         </table>
       </div>
 
-      <p class="mini">Este relatório é apenas analítico/reconciliatório. Abrir, tratar ou exportar o Account Money Report <b>não cria lançamentos</b> no ZIEL. Os lançamentos continuam sendo feitos somente pela confirmação na tela Consultar entradas.</p>
+      <p class="mini">Esta consulta mostra as <b>entradas e saídas que afetaram o saldo</b> da conta Mercado Pago no período escolhido. Ela é analítica/reconciliatória e não cria lançamentos automaticamente. Para lançar recebimentos no financeiro, continue usando a confirmação manual na tela Consultar entradas.</p>
     </div>
   `);
 
@@ -134,26 +136,69 @@ function zielAccountMoneyPending(data,wallet,from,to){
   const key=zielAccountMoneyTaskKey(wallet.id,from,to);
   if(data.task_id)zielAccountMoneyTasks[key]=String(data.task_id);
 
-  modal('Account Money Report — processando',`
+  const attempt=(zielAccountMoneyPollAttempts[key]||0)+1;
+  zielAccountMoneyPollAttempts[key]=attempt;
+
+  if(zielAccountMoneyPollTimer){
+    clearTimeout(zielAccountMoneyPollTimer);
+    zielAccountMoneyPollTimer=null;
+  }
+
+  modal('Movimentações da conta — processando',`
     <div class="zam-pending">
       <div class="zam-spinner">↻</div>
       <div>
-        <strong>O Mercado Pago está gerando o relatório.</strong>
-        <p>${esc(data.message||'A geração é assíncrona e pode levar alguns instantes.')}</p>
+        <strong>O Mercado Pago está preparando as movimentações da conta.</strong>
+        <p>${esc(data.message||'O Account Money Report é gerado de forma assíncrona e pode levar alguns instantes.')}</p>
         <span>${esc(wallet.name)} · ${esc(br(from))}${from!==to?' até '+esc(br(to)):''}</span>
       </div>
     </div>
-    <div class="zam-note"><span>O ZIEL guardou o identificador desta tarefa. Ao atualizar, continuará acompanhando o mesmo relatório em vez de criar outro.</span></div>
-    <div class="actions"><button type="button" class="btn btn-soft" id="zamCancel">Fechar</button><button type="button" class="btn btn-primary" id="zamRefresh">Atualizar relatório</button></div>
+    <div class="zam-note">
+      <strong>Atualização automática.</strong>
+      <span>O ZIEL continuará acompanhando a mesma tarefa. Não será criado outro relatório enquanto este estiver em processamento.</span>
+    </div>
+    <div class="zam-report-meta">
+      <span>Tentativa de atualização: <b>${attempt}</b></span>
+      <span>ID da tarefa: <b>${esc(String(data.task_id||'—'))}</b></span>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn btn-soft" id="zamCancel">Fechar</button>
+      <button type="button" class="btn btn-primary" id="zamRefresh">Atualizar agora</button>
+    </div>
   `);
-  $('zamCancel').onclick=closeModal;
+
+  const stop=()=>{
+    if(zielAccountMoneyPollTimer){
+      clearTimeout(zielAccountMoneyPollTimer);
+      zielAccountMoneyPollTimer=null;
+    }
+  };
+
+  $('zamCancel').onclick=()=>{stop();closeModal();};
   $('zamRefresh').onclick=()=>{
+    stop();
     closeModal();
     zielRunAccountMoneyReport();
   };
-}
 
+  if(attempt<=20){
+    zielAccountMoneyPollTimer=setTimeout(()=>{
+      zielAccountMoneyPollTimer=null;
+      if(!$('zinQueryWallet'))return;
+      closeModal();
+      zielRunAccountMoneyReport();
+    },3500);
+  }else{
+    stop();
+    const note=document.querySelector('.zam-note span');
+    if(note)note.textContent='O relatório está demorando mais que o normal. Use “Atualizar agora” em alguns instantes; o ZIEL continuará usando a mesma tarefa.';
+  }
+}
 async function zielRunAccountMoneyReport(){
+  if(zielAccountMoneyPollTimer){
+    clearTimeout(zielAccountMoneyPollTimer);
+    zielAccountMoneyPollTimer=null;
+  }
   const walletId=$('zinQueryWallet')?.value||'';
   if(!walletId)return toast('Selecione uma carteira Mercado Pago.','error');
 
@@ -172,7 +217,7 @@ async function zielRunAccountMoneyReport(){
 
   const key=zielAccountMoneyTaskKey(walletId,from,to);
   const btn=$('zinAccountMoneyButton');
-  if(btn){btn.disabled=true;btn.textContent='Gerando relatório…';}
+  if(btn){btn.disabled=true;btn.textContent='Consultando conta…';}
 
   try{
     const {data,error}=await supabase.functions.invoke('wallet-account-money-report',{
@@ -203,13 +248,14 @@ async function zielRunAccountMoneyReport(){
     }
 
     delete zielAccountMoneyTasks[key];
+    delete zielAccountMoneyPollAttempts[key];
     zielAccountMoneyRenderReport(data,wallet);
-    toast('Account Money Report tratado com sucesso.');
+    toast('Movimentações da conta carregadas com sucesso.');
   }catch(error){
-    toast('Relatório falhou: '+(error?.message||'erro desconhecido'),'error');
+    toast('Consulta da conta falhou: '+(error?.message||'erro desconhecido'),'error');
   }finally{
     if(btn&&document.body.contains(btn)){
-      btn.textContent='Account Money Report';
+      btn.textContent='Movimentações da conta';
       zielAccountMoneyPaintButton();
     }
   }
@@ -224,7 +270,7 @@ function zielAccountMoneyInstall(){
   btn.type='button';
   btn.className='btn btn-soft hidden';
   btn.id='zinAccountMoneyButton';
-  btn.textContent='Account Money Report';
+  btn.textContent='Movimentações da conta';
   btn.onclick=zielRunAccountMoneyReport;
   action.appendChild(btn);
 
