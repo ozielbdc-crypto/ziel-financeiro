@@ -26,7 +26,7 @@ function zielEntriesApplyUnifiedLabels(){
   if(queryBtn&&!zielIncomingQueryInFlight)queryBtn.textContent='Consultar e lançar entradas';
 
   const accountBtn=$('zinAccountMoneyButton');
-  if(accountBtn&&!accountBtn.disabled)accountBtn.textContent='Movimentações e lançamentos';
+  if(accountBtn&&!accountBtn.disabled)accountBtn.textContent='Movimentações e lançamentos · nova consulta';
 }
 
 const _zielUnifiedPreviousRenderShell=renderShell;
@@ -170,6 +170,21 @@ zielAccountMoneyRenderReport=function(data,wallet){
 
   const modalTitle=document.querySelector('#modalWrap .modal-head h3');
   if(modalTitle)modalTitle.textContent='Movimentações e lançamentos — Mercado Pago';
+
+  if(!data?._ziel_cached){
+    const report=document.querySelector('#modalWrap .zam-report');
+    if(report&&!report.querySelector('.zam-fresh-banner')){
+      const stamp=data?.queried_at
+        ?new Date(data.queried_at).toLocaleString('pt-BR',{timeZone:'America/Fortaleza',dateStyle:'short',timeStyle:'short'})
+        :new Date().toLocaleString('pt-BR',{timeZone:'America/Fortaleza',dateStyle:'short',timeStyle:'short'});
+      const banner=document.createElement('div');
+      banner.className='zam-fresh-banner';
+      banner.innerHTML='<strong>Consulta nova na API</strong><span>Este relatório foi obtido agora do Mercado Pago em '+esc(stamp)+'. O relatório anterior continua salvo apenas como histórico.</span>';
+      const head=report.querySelector('.zam-report-head');
+      if(head)head.insertAdjacentElement('afterend',banner);
+      else report.prepend(banner);
+    }
+  }
 
   document.querySelectorAll('.zam-receipt-flow').forEach(el=>{
     if(el.textContent.includes('Consultar entradas'))el.textContent='Use “Consultar e lançar”';
