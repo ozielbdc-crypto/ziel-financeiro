@@ -92,7 +92,7 @@ async function zielAccountMoneyPaintCacheButton(){
     }
 
     btn.disabled=false;
-    btn.textContent='Abrir último relatório salvo';
+    btn.textContent='Ver último relatório salvo (histórico)';
     if(meta){
       const period=cache.date_from===cache.date_to
         ?br(cache.date_from)
@@ -117,10 +117,10 @@ async function zielAccountMoneyOpenCached(){
   if(!wallet)return toast('Carteira não encontrada.','error');
 
   const btn=$('zinAccountMoneyCachedButton');
-  const original=btn?.textContent||'Abrir último relatório salvo';
+  const original=btn?.textContent||'Ver último relatório salvo (histórico)';
   if(btn){
     btn.disabled=true;
-    btn.textContent='Abrindo relatório salvo…';
+    btn.textContent='Abrindo histórico salvo…';
   }
 
   try{
@@ -155,13 +155,25 @@ async function zielAccountMoneyOpenCached(){
       note.className='zam-cache-banner';
       note.innerHTML='<strong>Relatório reaproveitado do ZIEL</strong><span>Aberto do cache salvo em '+
         esc(zielAccountMoneyCacheStamp(full.updated_at))+
-        '. Nenhuma nova consulta foi enviada ao Mercado Pago.</span>';
+        '. Nenhuma nova consulta foi enviada ao Mercado Pago. Este relatório é somente histórico.</span>';
       const head=report.querySelector('.zam-report-head');
       if(head)head.insertAdjacentElement('afterend',note);
       else report.prepend(note);
     }
 
-    toast('Último relatório aberto sem consultar o Mercado Pago.');
+    document.querySelectorAll('#modalWrap [data-zam-classify]').forEach(btn=>{
+      btn.disabled=true;
+      btn.textContent='Somente histórico';
+      btn.removeAttribute('data-zam-classify');
+    });
+    document.querySelectorAll('#modalWrap .zam-receipt-flow').forEach(el=>{
+      el.textContent='Relatório histórico';
+    });
+    const foot=document.querySelector('#modalWrap .zam-report p.mini');
+    if(foot){
+      foot.innerHTML='<b>Relatório histórico:</b> este conteúdo foi salvo anteriormente e não pode gerar novos lançamentos. Para lançar movimentos, feche esta tela e use <b>Movimentações e lançamentos</b>, que sempre consulta a API novamente.';
+    }
+    toast('Histórico aberto. Para lançar, faça uma nova consulta à API.');
   }catch(error){
     toast('Não foi possível abrir o relatório salvo: '+(error?.message||'erro desconhecido'),'error');
   }finally{
@@ -184,7 +196,7 @@ zielAccountMoneyInstall=function(){
     btn.type='button';
     btn.className='btn btn-soft hidden';
     btn.id='zinAccountMoneyCachedButton';
-    btn.textContent='Abrir último relatório salvo';
+    btn.textContent='Ver último relatório salvo (histórico)';
     btn.onclick=zielAccountMoneyOpenCached;
     action.appendChild(btn);
   }
