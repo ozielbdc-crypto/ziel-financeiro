@@ -15,7 +15,7 @@ function zielEntriesApplyUnifiedLabels(){
   const title=document.querySelector('#content .title-row h1');
   const subtitle=document.querySelector('#content .title-row p');
   if(title)title.textContent='Consultar e lançar';
-  if(subtitle)subtitle.textContent='Consulte manualmente por dia ou período, selecione os movimentos e lance no financeiro sem duplicidade.';
+  if(subtitle)subtitle.textContent='Escolha um dia ou período. Cada consulta busca dados novos na API; o último relatório fica salvo apenas como histórico. Lance no financeiro sem duplicidade.';
 
   const head=document.querySelector('#content .zin-query-head strong');
   const headText=document.querySelector('#content .zin-query-head p');
@@ -70,7 +70,7 @@ zielAccountMoneyPaintButton=function(){
   }
 
   if(!btn.classList.contains('hidden')){
-    btn.textContent='Movimentações e lançamentos';
+    btn.textContent='Movimentações e lançamentos · nova consulta';
   }
 };
 
