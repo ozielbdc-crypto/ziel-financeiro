@@ -579,3 +579,29 @@
   .zam-cache-banner{flex-direction:column}
   .zam-cache-banner span{text-align:left}
 }
+
+
+/* Consulta fresca x relatório histórico */
+.zam-fresh-banner,.zam-cache-banner{
+  display:grid;
+  gap:4px;
+  margin:12px 0;
+  padding:11px 12px;
+  border-radius:9px;
+  font-size:11px;
+  line-height:1.5;
+}
+.zam-fresh-banner{
+  border:1px solid #cfe3d8;
+  border-left:4px solid var(--green);
+  background:#f3fbf6;
+  color:#466556;
+}
+.zam-fresh-banner strong{color:#176844;font-size:12px}
+.zam-cache-banner{
+  border:1px solid #efd8bd;
+  border-left:4px solid var(--orange);
+  background:#fff8f1;
+  color:#76502c;
+}
+.zam-cache-banner strong{color:#8a4b08;font-size:12px}
