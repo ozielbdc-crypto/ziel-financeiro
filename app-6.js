@@ -1,9 +1,18 @@
+// Instante de inclusão gravado pelo banco, independente da data financeira.
+function zielTransactionRegisteredAt(value){
+  if(!value)return '—';
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime()))return '—';
+  return date.toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
 // Exibição responsiva: tabelas no desktop e cartões no celular.
 function mobileTxCards(arr, actions=true){
   return `<div class="mobile-cards">${arr.map(t=>`<div class="mobile-record">
     <div class="mobile-record-head"><div class="mobile-record-title">${esc(t.description)}</div><div class="mobile-record-value ${t.type==='Entrada'?'g':'r'}">${t.type==='Entrada'?'+':'-'} ${fmt(t.amount)}</div></div>
     <div class="mobile-record-grid">
-      <div class="mobile-field"><span>Data</span><b>${br(t.transaction_date)}</b></div>
+      <div class="mobile-field"><span>Data financeira</span><b>${br(t.transaction_date)}</b></div>
+      <div class="mobile-field"><span>Registrado em</span><b>${esc(zielTransactionRegisteredAt(t.created_at))}</b></div>
       <div class="mobile-field"><span>Empresa</span><b>${esc(businessName(t.business_id))}</b></div>
       <div class="mobile-field"><span>Carteira</span><b>${esc(walletName(t.wallet_id))}</b></div>
       <div class="mobile-field"><span>Categoria</span><b>${esc(t.category||'—')}</b></div>
@@ -16,7 +25,7 @@ function mobileTxCards(arr, actions=true){
 
 transactionTable = function(arr,actions=true){
   if(!arr.length)return '<div class="empty">Nenhum lançamento encontrado.</div>';
-  const desktop=`<div class="table-wrap desktop-table"><table class="table"><thead><tr><th>Data</th><th>Empresa</th><th>Descrição</th><th>Carteira</th><th>Tipo</th><th>Valor</th><th>Conciliação</th>${actions?'<th></th>':''}</tr></thead><tbody>${arr.map(t=>`<tr><td>${br(t.transaction_date)}</td><td>${esc(businessName(t.business_id))}</td><td>${esc(t.description)}<div class="mini">${esc(t.category||'')}</div></td><td>${esc(walletName(t.wallet_id))}</td><td>${badge(t.type)}</td><td class="${t.type==='Entrada'?'g':'r'}"><b>${t.type==='Entrada'?'+':'-'} ${fmt(t.amount)}</b></td><td>${badge(t.reconciliation_status)}</td>${actions?`<td>${t.source_type==='manual'?`<button class="btn btn-soft" data-del-tx="${t.id}">Excluir</button>`:''}</td>`:''}</tr>`).join('')}</tbody></table></div>`;
+  const desktop=`<div class="table-wrap desktop-table"><table class="table"><thead><tr><th>Data financeira</th><th>Registrado em</th><th>Empresa</th><th>Descrição</th><th>Carteira</th><th>Tipo</th><th>Valor</th><th>Conciliação</th>${actions?'<th></th>':''}</tr></thead><tbody>${arr.map(t=>`<tr><td>${br(t.transaction_date)}</td><td>${esc(zielTransactionRegisteredAt(t.created_at))}</td><td>${esc(businessName(t.business_id))}</td><td>${esc(t.description)}<div class="mini">${esc(t.category||'')}</div></td><td>${esc(walletName(t.wallet_id))}</td><td>${badge(t.type)}</td><td class="${t.type==='Entrada'?'g':'r'}"><b>${t.type==='Entrada'?'+':'-'} ${fmt(t.amount)}</b></td><td>${badge(t.reconciliation_status)}</td>${actions?`<td>${t.source_type==='manual'?`<button class="btn btn-soft" data-del-tx="${t.id}">Excluir</button>`:''}</td>`:''}</tr>`).join('')}</tbody></table></div>`;
   return desktop+mobileTxCards(arr,actions);
 };
 
@@ -54,6 +63,6 @@ receivableTable = function(arr,actions=true){
 
 dashboardTransactionTable = function(arr){
   if(!arr.length)return '<div class="empty">Nenhum lançamento encontrado.</div>';
-  const desktop=`<div class="table-wrap desktop-table"><table class="table"><thead><tr><th>Data</th><th>Empresa</th><th>Descrição</th><th>Carteira</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th>Conciliação</th></tr></thead><tbody>${arr.map(t=>`<tr><td>${br(t.transaction_date)}</td><td>${esc(businessName(t.business_id))}</td><td>${esc(t.description)}</td><td>${esc(walletName(t.wallet_id))}</td><td>${esc(t.category||'—')}</td><td>${badge(t.type)}</td><td class="${t.type==='Entrada'?'g':'r'}"><b>${fmt(t.amount)}</b></td><td>${badge(t.reconciliation_status)}</td></tr>`).join('')}</tbody></table></div>`;
+  const desktop=`<div class="table-wrap desktop-table"><table class="table"><thead><tr><th>Data financeira</th><th>Registrado em</th><th>Empresa</th><th>Descrição</th><th>Carteira</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th>Conciliação</th></tr></thead><tbody>${arr.map(t=>`<tr><td>${br(t.transaction_date)}</td><td>${esc(zielTransactionRegisteredAt(t.created_at))}</td><td>${esc(businessName(t.business_id))}</td><td>${esc(t.description)}</td><td>${esc(walletName(t.wallet_id))}</td><td>${esc(t.category||'—')}</td><td>${badge(t.type)}</td><td class="${t.type==='Entrada'?'g':'r'}"><b>${fmt(t.amount)}</b></td><td>${badge(t.reconciliation_status)}</td></tr>`).join('')}</tbody></table></div>`;
   return desktop+mobileTxCards(arr,false);
 };
