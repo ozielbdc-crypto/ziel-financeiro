@@ -6,7 +6,7 @@
 accountForm = function(kind){
   const pay=kind==='pay';
   return `<form id="accountForm" class="form-grid">
-    <div class="field"><label>Empresa</label><select id="aBiz" required>${businessOptions(false,state.businessFilter)}</select></div>
+    <div class="field"><label>Empresa</label><select id="aBiz" required>${businessOptions(false)}</select></div>
     <div class="field"><label>${pay?'Favorecido':'Cliente / Origem'}</label><input class="input" id="aParty" required></div>
     <div class="field"><label>Categoria</label><select id="aCat" required>${categoryOptions(pay?'Saída':'Entrada')}</select></div>
     <div class="field"><label>Valor</label><input class="input" id="aAmount" type="number" step="0.01" min="0" required></div>

@@ -74,7 +74,7 @@ function openCashCheck(){
     <form id="cashCheckForm" class="form-grid">
       <div class="field span-2">
         <label>Carteira</label>
-        <select id="cashWallet" required>
+        <select id="cashWallet" required><option value="">Selecione…</option>
           ${cashWallets.map(w=>`<option value="${w.id}">${esc(businessName(w.business_id))} — ${esc(w.name)}</option>`).join('')}
         </select>
       </div>

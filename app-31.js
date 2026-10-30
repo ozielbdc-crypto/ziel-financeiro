@@ -198,9 +198,6 @@ async function zielIncomingOpenBatchConfirm(){
     '</form>'
   );
 
-  const category=$('zinBatchCategory');
-  if(category&&Array.from(category.options).some(function(o){return o.value==='Vendas';}))category.value='Vendas';
-
   $('zinBatchCancel').onclick=closeModal;
 
   $('zinBatchForm').onsubmit=async function(e){

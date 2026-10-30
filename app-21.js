@@ -88,7 +88,7 @@ renderWallets = function(){
       </div>`:''}
 
       <div class="zwallet-toolbar">
-        <div class="field"><label for="zwalletStatus">Exibir</label><select id="zwalletStatus"><option value="active">Ativas</option><option value="all">Todas</option><option value="generic">Somente genéricas</option><option value="inactive">Inativas</option></select></div>
+        <div class="field"><label for="zwalletStatus">Exibir</label><select id="zwalletStatus"><option value="">Selecione…</option><option value="active">Ativas</option><option value="all">Todas</option><option value="generic">Somente genéricas</option><option value="inactive">Inativas</option></select></div>
         <div class="field"><label for="zwalletSearch">Buscar carteira</label><input class="input" id="zwalletSearch" type="search" placeholder="Nome, tipo ou negócio"></div>
       </div>
       <div id="zwalletList"></div>
@@ -148,8 +148,8 @@ openWallet = function(walletId=''){
   const editing=!!wallet;
   const movements=wallet?zielWalletMovementCount(wallet.id):0;
   const lockedOpening=editing&&movements>0;
-  const selectedBusiness=wallet?.business_id||state.businessFilter||state.businesses.find(b=>b.active!==false)?.id||'';
-  const selectedType=wallet?.type||'Banco';
+  const selectedBusiness=wallet?.business_id||'';
+  const selectedType=wallet?.type||'';
 
   modal(editing?'Editar carteira':'Nova carteira',`
     <form id="walletForm" class="form-grid">
@@ -160,7 +160,7 @@ openWallet = function(walletId=''){
       </div>
       <div class="field">
         <label>Tipo de local</label>
-        <select id="wType">
+        <select id="wType" required><option value="">Selecione…</option>
           <option value="Banco" ${selectedType==='Banco'?'selected':''}>Conta bancária</option>
           <option value="Carteira Digital" ${selectedType==='Carteira Digital'?'selected':''}>Carteira digital</option>
           <option value="Caixa" ${selectedType==='Caixa'?'selected':''}>Caixa físico</option>

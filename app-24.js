@@ -115,7 +115,7 @@ function zielOpenTokenModal(walletId,provider=''){
   const wallet=(state.wallets||[]).find(w=>w.id===walletId);
   if(!wallet)return toast('Carteira não encontrada.','error');
 
-  const selected=provider||zielIntegrationSuggestedProvider(wallet);
+  const selected=provider||'';
   const existing=provider?zielWalletIntegrations.find(i=>i.wallet_id===wallet.id&&i.provider===provider):null;
 
   modal(existing?'Atualizar token da carteira':'Configurar token da carteira',`
@@ -128,7 +128,7 @@ function zielOpenTokenModal(walletId,provider=''){
 
       <div class="field">
         <label for="zintProvider">Instituição / provedor</label>
-        <select id="zintProvider">
+        <select id="zintProvider" required><option value="">Selecione…</option>
           <option value="mercado_pago" ${selected==='mercado_pago'?'selected':''}>Mercado Pago</option>
           <option value="asaas" ${selected==='asaas'?'selected':''}>Asaas</option>
           <option value="efi" ${selected==='efi'?'selected':''}>Efí</option>
@@ -445,7 +445,7 @@ async function renderWalletIntegrations(seq=zielIntegrationRenderSeq){
       <div class="zint-toolbar">
         <div class="field">
           <label for="zintStatus">Exibir</label>
-          <select id="zintStatus">
+          <select id="zintStatus"><option value="">Selecione…</option>
             <option value="active">Carteiras ativas</option>
             <option value="all">Todas as carteiras</option>
             <option value="configured">Com integração</option>

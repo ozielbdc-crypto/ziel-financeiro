@@ -75,16 +75,14 @@ function transferTable(records=zielTransferRecords()){
 
 function renderTransfers(){
   const wallets=state.wallets.filter(w=>w.active!==false);
-  const defaultSource=wallets.find(w=>w.business_id===state.businessFilter)||wallets[0]||null;
-  const defaultDestination=wallets.find(w=>w.id!==defaultSource?.id)||null;
   $('content').innerHTML=setTitle('Transferências','Movimente valores entre carteiras sem registrar uma nova receita ou despesa')+`
     <div class="transfer-page">
       <section class="card transfer-form-card">
         <div class="section-head"><div><h3>Nova transferência</h3><p class="mini">Selecione de onde o valor sai e onde ele será recebido.</p></div><span class="mini">Movimentação interna</span></div>
         ${wallets.length<2?'<p class="message error">Cadastre pelo menos duas carteiras ativas para realizar uma transferência.</p>':''}
         <form id="transferForm" class="form-grid transfer-form-grid">
-          <div class="field"><label for="trSource">Carteira de origem</label><select id="trSource" required>${walletOptions('',defaultSource?.id||'')}</select></div>
-          <div class="field"><label for="trDest">Carteira de destino</label><select id="trDest" required>${walletOptions('',defaultDestination?.id||'')}</select></div>
+          <div class="field"><label for="trSource">Carteira de origem</label><select id="trSource" required>${walletOptions()}</select></div>
+          <div class="field"><label for="trDest">Carteira de destino</label><select id="trDest" required>${walletOptions()}</select></div>
           <div class="field"><label for="trAmount">Valor a transferir (R$)</label><input class="input" id="trAmount" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0,00" required></div>
           <div class="field"><label for="trDate">Data da transferência</label><input class="input" id="trDate" type="date" value="${iso()}" required></div>
           <div class="field span-2"><label for="trDesc">Descrição / finalidade</label><input class="input" id="trDesc" maxlength="250" value="Transferência entre carteiras" placeholder="Ex.: Reforço do caixa da loja"></div>
@@ -97,15 +95,13 @@ function renderTransfers(){
         <div class="transfer-history-filters">
           <div class="field"><label for="trSearch">Buscar</label><input class="input" id="trSearch" type="search" placeholder="Carteira, empresa ou descrição"></div>
           <div class="field"><label for="trMonth">Mês</label><input class="input" id="trMonth" type="month" title="Em branco: todos os meses"></div>
-          <div class="field"><label for="trKind">Tipo de movimentação</label><select id="trKind"><option value="">Todas</option><option value="same">Mesmo negócio</option><option value="between">Entre negócios</option></select></div>
+          <div class="field"><label for="trKind">Tipo de movimentação</label><select id="trKind"><option value="">Selecione…</option><option value="same">Mesmo negócio</option><option value="between">Entre negócios</option></select></div>
         </div>
         <div class="transfer-history-tools"><span class="mini" id="transferHistoryCount"></span><button type="button" class="btn btn-soft" id="trClearFilters">Limpar filtros</button></div>
         <div class="transfer-stats" id="transferStats"></div>
         <div id="transferHistory"></div>
       </section>
     </div>`;
-  if(defaultSource)$('trSource').value=defaultSource.id;
-  if(defaultDestination)$('trDest').value=defaultDestination.id;
   const updatePreview=()=>{
     const from=zielTransferWallet($('trSource').value),to=zielTransferWallet($('trDest').value);
     const amount=Number($('trAmount').value);

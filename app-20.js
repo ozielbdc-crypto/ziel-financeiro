@@ -141,13 +141,13 @@ function renderMoneyPosition(){
       <div class="zbal-notice"><strong>Como usar:</strong> abra seu aplicativo bancário e informe o saldo exibido em cada carteira. O ZIEL guarda os dois valores no momento da conferência. Os valores informados anteriormente <b>não são tratados como saldos bancários em tempo real</b>.</div>
       <section class="zbal-section">
         <div class="zbal-section-top"><div><h2>Posição por negócio</h2><p class="mini">Cada valor fica na carteira onde está registrado. Transferências internas não são receitas.</p></div>
-        <div class="field"><label for="zbalFilter">Exibir carteiras</label><select id="zbalFilter"><option value="all">Todas</option><option value="attention">Precisam de atenção</option><option value="diff">Com diferença</option><option value="never">Sem conferência</option></select></div></div>
+        <div class="field"><label for="zbalFilter">Exibir carteiras</label><select id="zbalFilter"><option value="">Selecione…</option><option value="all">Todas</option><option value="attention">Precisam de atenção</option><option value="diff">Com diferença</option><option value="never">Sem conferência</option></select></div></div>
         <div id="zbalGroupList"></div>
       </section>
       <p class="mini zbal-bottom-note">O saldo ZIEL considera lançamentos com data até hoje e exclui movimentos futuros. Saldos de bancos podem diferir por transações ainda não registradas, tarifas, compensações ou lançamentos em carteiras incorretas. Conferir não corrige nem zera valores automaticamente.</p>
     </div>`;
   const paint=()=>{
-    const f=$('zbalFilter').value;
+    const f=$('zbalFilter').value||'all';
     const selected=infos.filter(x=>
       f==='all'||(f==='attention'&&x.status.kind!=='ok')||(f==='diff'&&x.status.kind==='diff')||(f==='never'&&x.status.kind==='never'));
     const bIds=[...new Set(selected.map(x=>x.wallet.business_id))];

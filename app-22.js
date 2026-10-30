@@ -49,7 +49,7 @@ openSettle = function(kind,id){
 
     <div class="field">
       <label>Forma</label>
-      <select id="sMethod">
+      <select id="sMethod" required><option value="">Selecione…</option>
         <option>Pix</option>
         <option>Dinheiro</option>
         <option>Cartão Débito</option>

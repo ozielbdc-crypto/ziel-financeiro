@@ -97,7 +97,7 @@ function zielPaymentFields(prefix, data={}){
         <div class="field">
           <label>Forma de pagamento</label>
           <select id="${prefix}PayMethod">
-            <option value="">Não informado</option>
+            <option value="">Selecione…</option>
             <option value="Pix" ${method==='Pix'?'selected':''}>Pix</option>
             <option value="Boleto" ${method==='Boleto'?'selected':''}>Boleto</option>
             <option value="Transferência" ${method==='Transferência'?'selected':''}>Transferência</option>
@@ -109,7 +109,7 @@ function zielPaymentFields(prefix, data={}){
         <div class="field ziel-pix-field" data-prefix="${prefix}" style="display:none">
           <label>Tipo de chave Pix</label>
           <select id="${prefix}PixType">
-            <option value="">Selecione</option>
+            <option value="">Selecione…</option>
             <option value="CPF/CNPJ" ${pixType==='CPF/CNPJ'?'selected':''}>CPF/CNPJ</option>
             <option value="Telefone" ${pixType==='Telefone'?'selected':''}>Telefone</option>
             <option value="E-mail" ${pixType==='E-mail'?'selected':''}>E-mail</option>
@@ -397,7 +397,7 @@ document.addEventListener('click',e=>{
 accountForm = function(kind){
   const pay=kind==='pay';
   return `<form id="accountForm" class="form-grid">
-    <div class="field"><label>Empresa</label><select id="aBiz" required>${businessOptions(false,state.businessFilter)}</select></div>
+    <div class="field"><label>Empresa</label><select id="aBiz" required>${businessOptions(false)}</select></div>
     <div class="field"><label>${pay?'Favorecido':'Cliente / Origem'}</label><input class="input" id="aParty" required></div>
     <div class="field"><label>Categoria</label><select id="aCat" required>${categoryOptions(pay?'Saída':'Entrada')}</select></div>
     <div class="field"><label>Valor</label><input class="input" id="aAmount" type="number" inputmode="decimal" step="0.01" min="0" required></div>
@@ -434,7 +434,7 @@ bindAccount = function(kind){
 // Conta fixa
 openRecurringPayable = function(){
   modal('Nova conta fixa',`<form id="fixedForm" class="form-grid">
-    <div class="field"><label>Empresa</label><select id="fBiz" required>${businessOptions(false,state.businessFilter)}</select></div>
+    <div class="field"><label>Empresa</label><select id="fBiz" required>${businessOptions(false)}</select></div>
     <div class="field"><label>Favorecido</label><input class="input" id="fSupplier" required></div>
     <div class="field"><label>Categoria</label><select id="fCat" required>${categoryOptions('Saída')}</select></div>
     <div class="field"><label>Valor padrão</label><input class="input" id="fAmount" type="number" step="0.01" min="0" required></div>
@@ -509,17 +509,17 @@ openEditRecurringPayable = function(id){
 // Contas parceladas
 openInstallmentPayables = function(){
   modal('Contas a pagar parcelado',`<form id="installmentPayForm" class="form-grid">
-    <div class="field"><label>Empresa</label><select id="ipBiz" required>${businessOptions(false,state.businessFilter)}</select></div>
+    <div class="field"><label>Empresa</label><select id="ipBiz" required>${businessOptions(false)}</select></div>
     <div class="field"><label>Favorecido</label><input class="input" id="ipSupplier" required></div>
     <div class="field"><label>Categoria</label><select id="ipCat" required>${categoryOptions('Saída')}</select></div>
     <div class="field"><label>Valor total da compra</label><input class="input" id="ipTotal" type="number" step="0.01" min="0.01" required></div>
     <div class="field span-2"><label>Descrição</label><input class="input" id="ipDesc" required></div>
     <div class="field"><label>Data da compra / emissão</label><input class="input" id="ipIssue" type="date" value="${iso()}" required></div>
     <div class="field"><label>Documento / NF</label><input class="input" id="ipDoc"></div>
-    <div class="field span-2"><label>Forma de pagamento</label><select id="ipPayMethod"><option value="">Não informado</option><option>Pix</option><option>Boleto</option><option>Transferência</option><option>Dinheiro</option><option>Cartão</option><option>Outro</option></select></div>
+    <div class="field span-2"><label>Forma de pagamento</label><select id="ipPayMethod"><option value="">Selecione…</option><option>Pix</option><option>Boleto</option><option>Transferência</option><option>Dinheiro</option><option>Cartão</option><option>Outro</option></select></div>
     <div id="ipPixCommon" class="span-2" style="display:none">
       <div class="form-grid">
-        <div class="field"><label>Tipo de chave Pix</label><select id="ipPixType"><option value="">Selecione</option><option>CPF/CNPJ</option><option>Telefone</option><option>E-mail</option><option>Aleatória</option></select></div>
+        <div class="field"><label>Tipo de chave Pix</label><select id="ipPixType"><option value="">Selecione…</option><option>CPF/CNPJ</option><option>Telefone</option><option>E-mail</option><option>Aleatória</option></select></div>
         <div class="field"><label>Chave Pix</label><div class="actions"><input class="input" id="ipPixKey" style="flex:1"><button type="button" class="btn btn-soft" data-copy-input="ipPixKey">Copiar chave</button></div></div>
       </div>
     </div>

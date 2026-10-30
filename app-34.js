@@ -81,23 +81,8 @@ async function zielAccountMoneyClassify(rowIndex,walletId){
     const modalTitle=document.querySelector('#modalWrap .modal-head h3');
     if(modalTitle)modalTitle.textContent='Classificar movimentação da conta';
 
-    const mode=$('zinTransferMode');
-    const category=$('zinTransferCategory');
     const description=$('zinTransferDescription');
     const kind=String(row.kind||'').toLowerCase();
-
-    if(mode&&['fee','expense','refund','chargeback'].includes(kind)){
-      mode.value='expense';
-      if(typeof mode.onchange==='function')mode.onchange();
-    }
-
-    if(category&&kind==='fee'){
-      const taxOption=[...category.options].find(o=>
-        String(o.value||o.textContent||'').toLocaleLowerCase('pt-BR').includes('impostos/taxas')||
-        String(o.value||o.textContent||'').toLocaleLowerCase('pt-BR').includes('taxa')
-      );
-      if(taxOption)category.value=taxOption.value;
-    }
 
     if(description){
       if(kind==='fee')description.value='Tarifa / imposto Mercado Pago';

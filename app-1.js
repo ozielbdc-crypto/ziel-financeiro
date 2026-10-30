@@ -26,9 +26,9 @@ function walletName(id){return state.wallets.find(x=>x.id===id)?.name||'—'}
 function badge(s){let c=/Pago|Recebido|Conciliado/i.test(s)?'green':/Vencid|Divergente|Cancel/i.test(s)?'red':/Pendente|Não conciliado/i.test(s)?'amber':'blue';return `<span class="badge ${c}">${esc(s)}</span>`}
 function filtered(arr,key='business_id'){return state.businessFilter?arr.filter(x=>x[key]===state.businessFilter):arr}
 function walletBalance(w){return Number(w.opening_balance||0)+state.transactions.filter(t=>t.wallet_id===w.id).reduce((a,t)=>a+moneySign(t),0)}
-function businessOptions(all=true,selected=''){return `${all?'<option value="">Todos os negócios</option>':''}`+state.businesses.filter(b=>b.active!==false).map(b=>`<option value="${b.id}" ${b.id===selected?'selected':''}>${esc(b.name)}</option>`).join('')}
-function walletOptions(business='',selected=''){return state.wallets.filter(w=>w.active!==false&&(!business||w.business_id===business)).map(w=>`<option value="${w.id}" ${w.id===selected?'selected':''}>${esc(businessName(w.business_id))} — ${esc(w.name)}</option>`).join('')}
-function categoryOptions(type,selected=''){return state.categories.filter(c=>c.active!==false&&(!type||c.type===type)).map(c=>`<option value="${esc(c.name)}" ${c.name===selected?'selected':''}>${esc(c.name)}</option>`).join('')}
+function businessOptions(all=true,selected=''){return '<option value="">Selecione…</option>'+state.businesses.filter(b=>b.active!==false).map(b=>`<option value="${b.id}" ${b.id===selected?'selected':''}>${esc(b.name)}</option>`).join('')}
+function walletOptions(business='',selected=''){return '<option value="">Selecione…</option>'+state.wallets.filter(w=>w.active!==false&&(!business||w.business_id===business)).map(w=>`<option value="${w.id}" ${w.id===selected?'selected':''}>${esc(businessName(w.business_id))} — ${esc(w.name)}</option>`).join('')}
+function categoryOptions(type,selected=''){return '<option value="">Selecione…</option>'+state.categories.filter(c=>c.active!==false&&(!type||c.type===type)).map(c=>`<option value="${esc(c.name)}" ${c.name===selected?'selected':''}>${esc(c.name)}</option>`).join('')}
 
 function renderAuth(message=''){
  app.innerHTML=`<div class="auth-shell"><div class="auth-card">

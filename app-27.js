@@ -238,14 +238,14 @@ renderIncomingEntries = async function(seq=zielIncomingRenderSeq){
         <div class="zin-query-grid zin-query-layout">
           <div class="field zin-query-wallet">
             <label for="zinQueryWallet">Carteira integrada</label>
-            <select id="zinQueryWallet"><option value="">Carregando carteiras…</option></select>
+            <select id="zinQueryWallet"><option value="">Selecione…</option></select>
             <div class="mini zin-wallet-integration-note" id="zinWalletIntegrationNote"></div>
           </div>
 
           <div class="zin-query-controls">
             <div class="field zin-query-mode">
               <label for="zinQueryMode">Consulta</label>
-              <select id="zinQueryMode">
+              <select id="zinQueryMode"><option value="">Selecione…</option>
                 <option value="day">Um dia</option>
                 <option value="period">Período</option>
               </select>
@@ -285,7 +285,7 @@ renderIncomingEntries = async function(seq=zielIncomingRenderSeq){
       <div class="zin-toolbar zin-toolbar-manual">
         <div class="field">
           <label for="zinStatus">Situação</label>
-          <select id="zinStatus">
+          <select id="zinStatus"><option value="">Selecione…</option>
             <option>Pendente</option>
             <option>Confirmado</option>
             <option>Ignorado</option>
@@ -295,7 +295,7 @@ renderIncomingEntries = async function(seq=zielIncomingRenderSeq){
 
         <div class="field">
           <label for="zinWalletFilter">Carteira</label>
-          <select id="zinWalletFilter"><option value="">Todas</option></select>
+          <select id="zinWalletFilter"><option value="">Selecione…</option></select>
         </div>
 
         <div class="field">
@@ -330,11 +330,11 @@ renderIncomingEntries = async function(seq=zielIncomingRenderSeq){
 
     const wallets=zielIncomingConfiguredWallets();
     $('zinQueryWallet').innerHTML=wallets.length
-      ?zielIncomingWalletOptions(wallets[0]?.id||'')
+      ?zielIncomingWalletOptions()
       :'<option value="">Nenhuma carteira Mercado Pago, Asaas, Efí ou Lytex com token ativo</option>';
     $('zinQueryWallet').disabled=!wallets.length;
 
-    $('zinWalletFilter').innerHTML='<option value="">Todas</option>'+
+    $('zinWalletFilter').innerHTML='<option value="">Selecione…</option>'+
       wallets.map(w=>`<option value="${esc(w.id)}">${esc(businessName(w.business_id))} — ${esc(w.name)}</option>`).join('');
 
     zielIncomingPaintWallet();

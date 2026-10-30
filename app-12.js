@@ -19,14 +19,14 @@ renderPayables = function(){
    <div class="card" style="margin-bottom:14px">
     <div class="section-head"><div><h3 id="payPeriodTitle">Contas do mês</h3><span class="mini" id="payPeriodSub"></span></div></div>
     <div class="toolbar" style="gap:10px;flex-wrap:wrap">
-      <select id="payPeriod">
+      <select id="payPeriod"><option value="">Selecione…</option>
         <option value="month">Este mês</option>
         <option value="next">Próximo mês</option>
         <option value="30">Próximos 30 dias</option>
         <option value="all">Todas</option>
       </select>
-      <select id="payStatus"><option value="">Todas as situações</option><option>Pendente</option><option value="Vencidos">Vencidos</option><option>Pago</option><option>Cancelado</option></select>
-      <select id="payFornecedor"><option value="">Todos os fornecedores</option>${suppliers.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}</select>
+      <select id="payStatus"><option value="">Selecione…</option><option>Pendente</option><option value="Vencidos">Vencidos</option><option>Pago</option><option>Cancelado</option></select>
+      <select id="payFornecedor"><option value="">Selecione…</option>${suppliers.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}</select>
     </div>
     <div class="grid kpis dashboard-kpis" style="margin-top:12px" id="paySummary"></div>
    </div>

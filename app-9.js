@@ -2,7 +2,7 @@
 renderPayables = function(){
   let arr=filtered(state.payables),fixed=filtered(state.recurring_payables);
   $('content').innerHTML=setTitle('Contas a Pagar','Controle de vencimentos, pagamentos e recorrências',`<div class="actions"><button class="btn btn-soft" id="newFixed">+ Conta fixa</button><button class="btn btn-soft" id="newInstallmentPay">+ Contas a pagar parcelado</button><button class="btn btn-primary" id="newPay">+ Nova conta</button></div>`)+
-  `<div class="card" style="margin-bottom:14px"><div class="section-head"><h3>Contas fixas recorrentes</h3><span class="mini">Geração mensal automática</span></div><div id="fixedList"></div></div><div class="card"><div class="toolbar"><select id="payStatus"><option value="">Todos</option><option>Pendente</option><option>Pago</option><option>Cancelado</option></select></div><div id="payTable"></div></div>`;
+  `<div class="card" style="margin-bottom:14px"><div class="section-head"><h3>Contas fixas recorrentes</h3><span class="mini">Geração mensal automática</span></div><div id="fixedList"></div></div><div class="card"><div class="toolbar"><select id="payStatus"><option value="">Selecione…</option><option>Pendente</option><option>Pago</option><option>Cancelado</option></select></div><div id="payTable"></div></div>`;
   $('newPay').onclick=openPayable;
   $('newFixed').onclick=openRecurringPayable;
   $('newInstallmentPay').onclick=openInstallmentPayables;
@@ -17,7 +17,7 @@ renderPayables = function(){
 
 function openInstallmentPayables(){
   modal('Contas a pagar parcelado',`<form id="installmentPayForm" class="form-grid">
-    <div class="field"><label>Empresa</label><select id="ipBiz" required>${businessOptions(false,state.businessFilter)}</select></div>
+    <div class="field"><label>Empresa</label><select id="ipBiz" required>${businessOptions(false)}</select></div>
     <div class="field"><label>Fornecedor</label><input class="input" id="ipSupplier" required></div>
     <div class="field"><label>Categoria</label><select id="ipCat" required>${categoryOptions('Saída')}</select></div>
     <div class="field"><label>Valor total da compra</label><input class="input" id="ipTotal" type="number" step="0.01" min="0.01" required></div>

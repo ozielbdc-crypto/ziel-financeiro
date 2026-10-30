@@ -248,7 +248,7 @@ function zielIncomingOpenTransferConfirm(id){
       return biz||a.name.localeCompare(b.name,'pt-BR');
     });
 
-  const walletChoices='<option value="">Selecione a carteira</option>'+
+  const walletChoices='<option value="">Selecione…</option>'+
     counterpartWallets.map(w=>`<option value="${esc(w.id)}">${esc(businessName(w.business_id))} — ${esc(w.name)}</option>`).join('');
 
   const openPayables=incoming?[]:(state.payables||[])
@@ -266,8 +266,8 @@ function zielIncomingOpenTransferConfirm(id){
     });
 
   const exactPayables=openPayables.filter(p=>Math.abs(p.open_amount-amount)<.01);
-  const payableChoices='<option value="">Selecione a conta a pagar</option>'+
-    openPayables.map((p,i)=>`<option value="${esc(p.id)}" ${i===0&&exactPayables.length?'selected':''}>${esc(p.supplier||p.description||'Conta')} — vence ${esc(br(p.due_date))} — aberto ${fmt(p.open_amount)}</option>`).join('');
+  const payableChoices='<option value="">Selecione…</option>'+
+    openPayables.map((p,i)=>`<option value="${esc(p.id)}" >${esc(p.supplier||p.description||'Conta')} — vence ${esc(br(p.due_date))} — aberto ${fmt(p.open_amount)}</option>`).join('');
 
   modal(incoming?'Classificar transferência recebida':'Classificar transferência enviada',`
     <form id="zinTransferForm" class="zin-confirm-form">
@@ -278,7 +278,7 @@ function zielIncomingOpenTransferConfirm(id){
 
       <div class="field">
         <label>Como classificar este movimento?</label>
-        <select id="zinTransferMode">
+        <select id="zinTransferMode" required><option value="">Selecione…</option>
           <option value="transfer">${incoming?'Veio de outra carteira minha':'Foi para outra carteira minha'}</option>
           ${!incoming?'<option value="payable">Pagamento de uma conta cadastrada</option>':''}
           <option value="${incoming?'income':'expense'}">${incoming?'Entrada externa':'Saída externa / retirada / despesa'}</option>
@@ -346,7 +346,7 @@ function zielIncomingOpenTransferConfirm(id){
     const internal=mode==='transfer';
     const payableMode=mode==='payable';
     $('zinTransferDestinationWrap').classList.toggle('hidden',!internal);
-    $('zinTransferCategoryWrap').classList.toggle('hidden',internal||payableMode);
+    $('zinTransferCategoryWrap').classList.toggle('hidden',!mode||internal||payableMode);
     if($('zinTransferPayableWrap'))$('zinTransferPayableWrap').classList.toggle('hidden',!payableMode);
     $('zinTransferDescriptionWrap').classList.toggle('hidden',payableMode);
 
@@ -359,6 +359,7 @@ function zielIncomingOpenTransferConfirm(id){
       return;
     }
 
+    if(!mode){$('zinTransferNote').textContent='Selecione como classificar este movimento.';return;}
     $('zinTransferNote').innerHTML=internal
       ?`O ZIEL criará uma <b>Transferência</b> entre as duas carteiras. O resultado financeiro não será alterado. O ID externo <b>${esc(row.external_id||'—')}</b> continuará vinculado para impedir duplicidade.`
       :`O ZIEL criará uma <b>${incoming?'Entrada':'Saída'}</b> normal em Lançamentos. O ID externo <b>${esc(row.external_id||'—')}</b> impede que este movimento seja confirmado duas vezes.`;
@@ -371,6 +372,7 @@ function zielIncomingOpenTransferConfirm(id){
 
   $('zinTransferForm').onsubmit=async e=>{
     e.preventDefault();
+    if(!$('zinTransferMode').value)return toast('Selecione como classificar o movimento.','error');
     const mode=$('zinTransferMode').value;
     const internal=mode==='transfer';
     const payableMode=mode==='payable';
@@ -591,7 +593,7 @@ function zielIncomingIntegrationForWallet(walletId){
 
 function zielIncomingWalletOptions(selected=''){
   const wallets=zielIncomingConfiguredWallets();
-  return wallets.map(w=>{
+  return '<option value="">Selecione…</option>'+wallets.map(w=>{
     const integrations=zielIncomingIntegrationsForWallet(w.id);
     const suffix=integrations.length===1
       ?' · '+zielIncomingProviderLabel(integrations[0].provider)
@@ -640,7 +642,7 @@ function zielIncomingPaintWallet(){
 }
 
 function zielIncomingPaintDateMode(){
-  const mode=$('zinQueryMode')?.value||'day';
+  const mode=$('zinQueryMode')?.value||'';
   const day=$('zinDayWrap');
   const range=$('zinRangeWrap');
   if(day)day.classList.toggle('hidden',mode!=='day');
@@ -649,6 +651,7 @@ function zielIncomingPaintDateMode(){
 
 function zielIncomingQueryDates(){
   const mode=$('zinQueryMode').value;
+  if(!mode)return {from:'',to:''};
   if(mode==='day'){
     const date=$('zinQueryDay').value;
     return {from:date,to:date};
@@ -919,14 +922,14 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
         <div class="zin-query-grid zin-query-layout">
           <div class="field zin-query-wallet">
             <label for="zinQueryWallet">Carteira</label>
-            <select id="zinQueryWallet"><option value="">Carregando carteiras…</option></select>
+            <select id="zinQueryWallet"><option value="">Selecione…</option></select>
             <div class="mini zin-wallet-integration-note" id="zinWalletIntegrationNote"></div>
           </div>
 
           <div class="zin-query-controls">
             <div class="field zin-query-mode">
               <label for="zinQueryMode">Consulta</label>
-              <select id="zinQueryMode">
+              <select id="zinQueryMode"><option value="">Selecione…</option>
                 <option value="day">Um dia</option>
                 <option value="period">Período</option>
               </select>
@@ -966,7 +969,7 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
       <div class="zin-toolbar zin-toolbar-manual">
         <div class="field">
           <label for="zinStatus">Situação</label>
-          <select id="zinStatus">
+          <select id="zinStatus"><option value="">Selecione…</option>
             <option>Pendente</option>
             <option>Confirmado</option>
             <option>Ignorado</option>
@@ -976,12 +979,12 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
 
         <div class="field">
           <label for="zinWalletFilter">Carteira</label>
-          <select id="zinWalletFilter"><option value="">Todas</option></select>
+          <select id="zinWalletFilter"><option value="">Selecione…</option></select>
         </div>
 
         <div class="field">
           <label for="zinMovement">Movimento</label>
-          <select id="zinMovement">
+          <select id="zinMovement"><option value="">Selecione…</option>
             <option>Todos</option>
             <option>Recebimentos</option>
             <option>Transferências</option>
@@ -1018,11 +1021,11 @@ async function renderIncomingEntries(seq=zielIncomingRenderSeq){
 
     const wallets=zielIncomingConfiguredWallets();
     $('zinQueryWallet').innerHTML=wallets.length
-      ?zielIncomingWalletOptions(wallets[0]?.id||'')
+      ?zielIncomingWalletOptions()
       :'<option value="">Nenhuma carteira com integração ativa</option>';
     $('zinQueryWallet').disabled=!wallets.length;
 
-    $('zinWalletFilter').innerHTML='<option value="">Todas</option>'+
+    $('zinWalletFilter').innerHTML='<option value="">Selecione…</option>'+
       wallets.map(w=>`<option value="${esc(w.id)}">${esc(businessName(w.business_id))} — ${esc(w.name)}</option>`).join('');
 
     zielIncomingPaintWallet();

@@ -44,7 +44,7 @@ function zielSalesIntegrationsForWallet(walletId){
 }
 
 function zielSalesWalletOptions(selected=''){
-  return zielSalesConfiguredWallets().map(w=>{
+  return '<option value="">Selecione…</option>'+zielSalesConfiguredWallets().map(w=>{
     const integrations=zielSalesIntegrationsForWallet(w.id);
     const provider=integrations.length===1?zielSalesProviderLabel(integrations[0].provider):'múltiplas integrações';
     return `<option value="${esc(w.id)}" ${w.id===selected?'selected':''}>${esc(businessName(w.business_id))} — ${esc(w.name)} · ${esc(provider)}</option>`;
@@ -192,7 +192,7 @@ function zielSalesRefreshMethodFilter(){
   if(!select)return;
   const current=select.value;
   const methods=[...new Set(zielSalesRows.map(r=>String(r.payment_method||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-  select.innerHTML='<option value="">Todos os métodos</option>'+methods.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
+  select.innerHTML='<option value="">Selecione…</option>'+methods.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
   if(methods.includes(current))select.value=current;
 }
 
@@ -285,14 +285,14 @@ async function renderSalesQuery(seq){
         <div class="zin-query-grid zin-query-layout">
           <div class="field zin-query-wallet">
             <label for="zsalesWallet">Carteira</label>
-            <select id="zsalesWallet"><option value="">Carregando carteiras…</option></select>
+            <select id="zsalesWallet"><option value="">Selecione…</option></select>
             <div class="mini" id="zsalesWalletNote"></div>
           </div>
 
           <div class="zin-query-controls">
             <div class="field zin-query-mode">
               <label for="zsalesMode">Consulta</label>
-              <select id="zsalesMode">
+              <select id="zsalesMode"><option value="">Selecione…</option>
                 <option value="day">Um dia</option>
                 <option value="period">Período</option>
               </select>
@@ -320,7 +320,7 @@ async function renderSalesQuery(seq){
       <div class="zin-toolbar zin-toolbar-manual zlive-toolbar">
         <div class="field">
           <label for="zsalesMethod">Método</label>
-          <select id="zsalesMethod"><option value="">Todos os métodos</option></select>
+          <select id="zsalesMethod"><option value="">Selecione…</option></select>
         </div>
         <div class="field">
           <label for="zsalesSearch">Buscar</label>
@@ -355,7 +355,7 @@ async function renderSalesQuery(seq){
     const wallets=zielSalesConfiguredWallets();
 
     $('zsalesWallet').innerHTML=wallets.length
-      ?zielSalesWalletOptions(wallets[0]?.id||'')
+      ?zielSalesWalletOptions()
       :'<option value="">Nenhuma carteira com integração ativa</option>';
     $('zsalesWallet').disabled=!wallets.length;
     zielSalesPaintWallet();
