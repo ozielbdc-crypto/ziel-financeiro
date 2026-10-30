@@ -14,7 +14,8 @@ function notify(event,s){listeners.forEach(fn=>{try{fn(event,s)}catch{}})}
 class Query{
  constructor(table){this.table=table;this.method='GET';this.body=null;this.params=[];this.single=false}
  select(cols='*'){this.method='GET';this.params.push('select='+encodeURIComponent(cols));return this}
- order(col,opt={}){this.params.push('order='+encodeURIComponent(col+'.'+(opt.ascending===false?'desc':'asc')));return this}
+ order(col,opt={}){const value=col+'.'+(opt.ascending===false?'desc':'asc');const index=this.params.findIndex(p=>p.startsWith('order='));if(index<0)this.params.push('order='+encodeURIComponent(value));else this.params[index]+='%2C'+encodeURIComponent(value);return this}
+ range(from,to){this.params=this.params.filter(p=>!p.startsWith('offset=')&&!p.startsWith('limit='));this.params.push('offset='+encodeURIComponent(from),'limit='+encodeURIComponent(to-from+1));return this}
  limit(n){const v=Math.max(0,Math.floor(Number(n)||0));this.params.push('limit='+encodeURIComponent(v));return this}
  eq(col,val){this.params.push(encodeURIComponent(col)+'=eq.'+encodeURIComponent(val));return this}
  insert(row){this.method='POST';this.body=row;return this}
