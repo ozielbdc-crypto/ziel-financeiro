@@ -55,7 +55,25 @@ async function loadAll(){
  try{await supabase.rpc('generate_recurring_payables',{p_until:iso()})}catch(_){}
  const names=['businesses','wallets','categories','transactions','payables','receivables','bank_entries','transfers','recurring_payables','wallet_balance_checks'];
  const orders={transactions:['transaction_date',{ascending:false}],payables:['due_date',{ascending:true}],receivables:['due_date',{ascending:true}],bank_entries:['bank_date',{ascending:false}],businesses:['name',{ascending:true}],wallets:['name',{ascending:true}],categories:['name',{ascending:true}],transfers:['transfer_date',{ascending:false}],recurring_payables:['created_at',{ascending:false}],wallet_balance_checks:['checked_at',{ascending:false}]};
- for(const n of names){let q=supabase.from(n).select('*');if(orders[n])q=q.order(orders[n][0],orders[n][1]);const {data,error}=await q;if(error)throw error;state[n==='bank_entries'?'bank':n]=data||[]}
+ // Nunca calcular saldos com apenas a primeira página da API.
+ // O id desempata datas/nomes iguais para manter as páginas determinísticas.
+ const loaded={};
+ for(const n of names){
+   const rows=[];
+   for(;;){
+     let q=supabase.from(n).select('*');
+     if(orders[n])q=q.order(orders[n][0],orders[n][1]);
+     q=q.order('id',{ascending:true}).range(rows.length,rows.length+499);
+     const {data,error}=await q;
+     if(error)throw error;
+     if(!Array.isArray(data))throw new Error('Resposta inválida ao carregar '+n);
+     if(!data.length)break;
+     rows.push(...data);
+   }
+   loaded[n==='bank_entries'?'bank':n]=rows;
+ }
+ // Em caso de falha em qualquer página, preservar o estado anterior completo.
+ Object.assign(state,loaded);
  const {data:p}=await supabase.from('profiles').select('*').maybeSingle();state.profile=p;
 }
 function renderFatal(title,detail){app.innerHTML=`<div class="auth-shell"><div class="auth-card"><h1>${esc(title)}</h1><div class="message error">${esc(detail)}</div><button class="btn btn-primary btn-block" onclick="location.reload()">Tentar novamente</button></div></div>`}
