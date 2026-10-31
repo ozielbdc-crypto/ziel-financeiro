@@ -55,5 +55,29 @@ function drawCharts(tx,byBusiness=[]){
  state.charts.f=new Chart($('chartFluxo'),{type:'bar',data:{labels:months.map(m=>m.split('-').reverse().join('/')),datasets:[{label:'Entradas',data:ins},{label:'Saídas',data:outs}]},options:{responsive:true,maintainAspectRatio:false}});
  state.charts.n=new Chart($('chartNegocios'),{type:'bar',data:{labels:byBusiness.map(x=>x.name),datasets:[{label:'Lucro / Prejuízo',data:byBusiness.map(x=>x.profit)}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y'}});
  const cat={};tx.filter(t=>t.type==='Saída').forEach(t=>cat[t.category||'Sem categoria']=(cat[t.category||'Sem categoria']||0)+Number(t.amount));const top=Object.entries(cat).sort((a,b)=>b[1]-a[1]).slice(0,6);
- state.charts.c=new Chart($('chartCategorias'),{type:'doughnut',data:{labels:top.map(x=>x[0]),datasets:[{label:'Despesas',data:top.map(x=>x[1])}]},options:{responsive:true,maintainAspectRatio:false}})
+ const openCategory=index=>{
+   const category=top[index]?.[0];
+   if(category==null)return;
+   const rows=tx.filter(t=>t.type==='Saída'&&(t.category||'Sem categoria')===category)
+     .sort((a,b)=>String(b.transaction_date||'').localeCompare(String(a.transaction_date||''))||String(b.created_at||'').localeCompare(String(a.created_at||'')));
+   const total=rows.reduce((sum,t)=>sum+Math.round(Number(t.amount||0)*100),0)/100;
+   modal('Gastos · '+category,`<div class="section-head"><div><b>${rows.length} lançamento${rows.length===1?'':'s'}</b><div class="mini">Mesmos lançamentos e empresas considerados no gráfico.</div></div><strong class="r">${fmt(total)}</strong></div>${transactionTable(rows,false)}`);
+ };
+ const canvas=$('chartCategorias');
+ state.charts.c=new Chart(canvas,{type:'doughnut',data:{labels:top.map(x=>x[0]),datasets:[{label:'Despesas',data:top.map(x=>x[1])}]},options:{responsive:true,maintainAspectRatio:false,
+   onClick:(_event,elements)=>{if(elements.length)openCategory(elements[0].index);},
+   onHover:(_event,elements)=>{canvas.style.cursor=elements.length?'pointer':'default';}
+ }});
+ // Botões permitem abrir os mesmos detalhes com teclado e em telas de toque.
+ const card=canvas.closest('.card');
+ if(card){
+   card.querySelector('[data-category-details]')?.remove();
+   const links=document.createElement('div');
+   links.dataset.categoryDetails='';
+   links.className='actions';
+   links.style.cssText='margin-top:12px;flex-wrap:wrap';
+   links.innerHTML='<span class="mini">Clique em uma fatia ou categoria para ver os gastos:</span>'+top.map(([name],index)=>`<button type="button" class="btn btn-soft" data-category-index="${index}">${esc(name)}</button>`).join('');
+   links.querySelectorAll('[data-category-index]').forEach(button=>button.onclick=()=>openCategory(Number(button.dataset.categoryIndex)));
+   card.appendChild(links);
+ }
 }
