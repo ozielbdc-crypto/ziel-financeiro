@@ -54,14 +54,16 @@ function drawCharts(tx,byBusiness=[]){
  const outs=months.map(m=>tx.filter(t=>t.type==='Saída'&&t.transaction_date?.startsWith(m)).reduce((a,t)=>a+Number(t.amount),0));
  state.charts.f=new Chart($('chartFluxo'),{type:'bar',data:{labels:months.map(m=>m.split('-').reverse().join('/')),datasets:[{label:'Entradas',data:ins},{label:'Saídas',data:outs}]},options:{responsive:true,maintainAspectRatio:false}});
  state.charts.n=new Chart($('chartNegocios'),{type:'bar',data:{labels:byBusiness.map(x=>x.name),datasets:[{label:'Lucro / Prejuízo',data:byBusiness.map(x=>x.profit)}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y'}});
- const cat={};tx.filter(t=>t.type==='Saída').forEach(t=>cat[t.category||'Sem categoria']=(cat[t.category||'Sem categoria']||0)+Number(t.amount));const top=Object.entries(cat).sort((a,b)=>b[1]-a[1]).slice(0,6);
+ const categoryPeriod=zielDashboardPeriodRange(state.dashboardPeriod||'month');
+ const categoryTransactions=tx.filter(t=>zielInPeriod(t.transaction_date,categoryPeriod.start,categoryPeriod.end));
+ const cat={};categoryTransactions.filter(t=>t.type==='Saída').forEach(t=>cat[t.category||'Sem categoria']=(cat[t.category||'Sem categoria']||0)+Number(t.amount));const top=Object.entries(cat).sort((a,b)=>b[1]-a[1]).slice(0,6);
  const openCategory=index=>{
    const category=top[index]?.[0];
    if(category==null)return;
-   const rows=tx.filter(t=>t.type==='Saída'&&(t.category||'Sem categoria')===category)
+   const rows=categoryTransactions.filter(t=>t.type==='Saída'&&(t.category||'Sem categoria')===category)
      .sort((a,b)=>String(b.transaction_date||'').localeCompare(String(a.transaction_date||''))||String(b.created_at||'').localeCompare(String(a.created_at||'')));
    const total=rows.reduce((sum,t)=>sum+Math.round(Number(t.amount||0)*100),0)/100;
-   modal('Gastos · '+category,`<div class="section-head"><div><b>${rows.length} lançamento${rows.length===1?'':'s'}</b><div class="mini">Mesmos lançamentos e empresas considerados no gráfico.</div></div><strong class="r">${fmt(total)}</strong></div>${transactionTable(rows,false)}`);
+   modal('Gastos · '+category,`<div class="section-head"><div><b>${rows.length} lançamento${rows.length===1?'':'s'}</b><div class="mini">${esc(categoryPeriod.label)} · Mesmas empresas consideradas no gráfico.</div></div><strong class="r">${fmt(total)}</strong></div>${transactionTable(rows,false)}`);
  };
  const canvas=$('chartCategorias');
  state.charts.c=new Chart(canvas,{type:'doughnut',data:{labels:top.map(x=>x[0]),datasets:[{label:'Despesas',data:top.map(x=>x[1])}]},options:{responsive:true,maintainAspectRatio:false,
@@ -71,6 +73,8 @@ function drawCharts(tx,byBusiness=[]){
  // Botões permitem abrir os mesmos detalhes com teclado e em telas de toque.
  const card=canvas.closest('.card');
  if(card){
+   const periodLabel=card.querySelector('.section-head .mini');
+   if(periodLabel)periodLabel.textContent='Top 6 · '+categoryPeriod.label;
    card.querySelector('[data-category-details]')?.remove();
    const links=document.createElement('div');
    links.dataset.categoryDetails='';
